@@ -65,6 +65,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 RUN mkdir -p /home/dev/.cargo/bin /home/dev/.local/bin
 ENV PATH="/home/dev/.cargo/bin:/home/dev/.local/bin:$PATH"
 
+# bash required for array syntax (pids=() / pids+=($!))
+SHELL ["/bin/bash", "-c"]
+
 RUN set -e && \
     pids=() && \
     \
