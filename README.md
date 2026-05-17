@@ -6,6 +6,16 @@
 
 ---
 
+> [!TIP]
+> **Use Claude Code for setup:**  
+> 1. Clone: `npx tiged nandordudas/zsh-config ~/.config/zsh --disable-cache`  
+> 2. Open `~/.config/zsh` in [Claude Code](https://claude.ai/code)  
+> 3. Ask Claude: *"Help me finish setting up this zsh config. What prerequisites do I need for my OS, and what installation steps should I follow?"*
+> 
+> Or follow [Quick Start](#quick-start-5-minutes) manually below.
+
+---
+
 ## What is this?
 
 A **fully-featured zsh configuration** built with:
@@ -75,8 +85,10 @@ zsh-health
 
 You'll install these tools before cloning the config. Choose your system:
 
+> **Platform notes:** Config tested on **Ubuntu 22.04+**, **macOS 12+**, and **WSL2**. Core tools work anywhere, but some features (fastfetch, native font rendering) are WSL-only. See notes below.
+
 <details>
-<summary><strong>Ubuntu/Debian (recommended)</strong></summary>
+<summary><strong>Ubuntu/Debian/WSL (all platforms)</strong></summary>
 
 ```bash
 # 1. System packages
@@ -111,9 +123,14 @@ curl -sfL https://direnv.net/install.sh | bash
 [[ -d ~/.fzf ]] || git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ~/.fzf/install --key-bindings --completion --no-update-rc
 
-# 9. fastfetch (system info)
-sudo add-apt-repository ppa:zhangsongcui3371/fastfetch
-sudo apt update && sudo apt install -y fastfetch
+# 9. fastfetch (system info) — WSL2 only, optional on other systems
+# Skip on servers or if you don't need fast system info
+# Note: Ubuntu 24+ doesn't ship fastfetch in default repos
+if grep -q 'VERSION_ID="24\.' /etc/os-release 2>/dev/null; then
+  # Ubuntu 24+: use PPA
+  sudo add-apt-repository ppa:zhangsongcui3371/fastfetch 2>/dev/null || true
+fi
+sudo apt update && sudo apt install -y fastfetch 2>/dev/null || true
 
 # 10. GitHub CLI (required for git operations)
 sudo mkdir -p -m 755 /etc/apt/keyrings
@@ -124,9 +141,14 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubc
   sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
 sudo apt update && sudo apt install -y gh
 
-# 11. Authenticate with GitHub
+# 11. Authenticate with GitHub (interactive)
 gh auth login
 ```
+
+**Platform-specific notes:**
+- **WSL2**: All tools work. fastfetch shows accurate system info. Git and tmux render properly.
+- **Native Linux**: Works identically to WSL. Tested on Ubuntu 22.04+.
+- **macOS**: Use Homebrew section below for easier installation.
 
 </details>
 
@@ -191,6 +213,103 @@ See [Starship docs](https://starship.rs/guide/#🚀-installation) for distributi
 **After prerequisites:**
 - Verify all tools are in PATH: `zsh-health` (or wait until after installing the config)
 - Close and reopen your terminal
+
+---
+
+## Server-Only Setup (Production)
+
+For production servers where you want the same shell config but **without development tools** and without Claude:
+
+```bash
+# 1. Core system packages only (no development tools)
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y zsh git tmux ripgrep fd-find bat zoxide exiftool
+
+# 2. Change shell to zsh
+chsh -s $(command -v zsh)
+
+# 3. Rust + cargo (minimal — only git-delta for diffs)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
+cargo install git-delta
+
+# 4. fzf only (for interactive scripts/terminal)
+[[ -d ~/.fzf ]] || git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+~/.fzf/install --key-bindings --completion --no-update-rc
+
+# 5. Minimal prompt (no Starship overhead)
+# Use built-in zsh prompt or PROMPT='%n@%m:%~%# ' in .zshrc
+
+# 6. direnv (if using per-directory env vars)
+curl -sfL https://direnv.net/install.sh | bash
+
+# 7. GitHub CLI — OPTIONAL (only if server manages GitHub repos)
+# Skip this unless you need: automated releases, issue creation, PR management, or GitHub Actions
+# Most servers just pull code and don't need gh
+# sudo mkdir -p -m 755 /etc/apt/keyrings
+# wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+#   sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
+# sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+# echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | \
+#   sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
+# sudo apt update && sudo apt install -y gh
+
+# 8. Clone config (same as development setup)
+npx tiged nandordudas/zsh-config ~/.config/zsh --disable-cache
+
+# 9. Create ~/.zshenv
+cat > ~/.zshenv << 'EOF'
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
+EOF
+
+# 10. Setup machine-local config
+touch ~/.config/zsh/modules/local.zsh
+
+# 11. Link tmux config
+mkdir -p ~/.config/tmux
+ln -sf ~/.config/zsh/tmux/tmux.conf ~/.config/tmux/tmux.conf
+
+# 12. Verify
+zsh-health
+```
+
+**What's excluded from server setup:**
+| Excluded | Reason |
+|----------|--------|
+| **Node.js (fnm/npm/pnpm)** | No frontend dev or build tools |
+| **Go version manager (g)** | Not needed unless building Go services |
+| **Starship** | Prompt overhead; use simple built-in prompt |
+| **fastfetch** | System info tool; not needed on headless servers |
+| **npkill/taze/eslint** | Development tools only |
+| **Claude** | Not for production (API keys on servers = risk) |
+
+**What's kept:**
+| Tool | Why |
+|------|-----|
+| **zsh + config** | Better shell scripting, familiar environment |
+| **git** | Version control, pull/push code |
+| **tmux** | Session management for long-running tasks |
+| **ripgrep/fd** | Fast searching for logs and scripts |
+| **bat** | Syntax-highlighted cat for logs |
+| **zoxide** | Directory jumps (handy for ops) |
+| **fzf** | Interactive scripts and history search |
+| **git-delta** | Better diffs for git blame/log |
+| **direnv** | Per-directory env vars (secrets management) |
+
+**Optional (add only if needed):**
+| Tool | When |
+|------|------|
+| **gh** (GitHub CLI) | Server creates issues, PRs, releases, or runs GitHub Actions. Skip if server just pulls code. |
+
+**Server tips:**
+- Skip interactive setup: set `GIT_NAME` and `GIT_EMAIL` env vars before running `git-setup.sh`
+- Disable Starship in `modules/zinit.zsh` (comment out the Starship section)
+- Use built-in prompt: `PROMPT='%n@%m:%~# '` in `modules/local.zsh`
+- Test cron/systemd tasks in isolated environment first
 
 ---
 
@@ -384,6 +503,58 @@ Built-in fuzzy finding:
 - `Ctrl+R` → Search command history
 - `Ctrl+T` → Find files/directories
 - `Alt+C` → Smart directory navigation
+
+### Uninstall / Disable
+
+To remove this config and revert to your system default shell:
+
+```bash
+# 1. Revert to bash (or your original shell)
+chsh -s /bin/bash
+
+# 2. Remove zsh config directory (keeps backup)
+mv ~/.config/zsh ~/.config/zsh.bak
+
+# 3. Remove zsh environment file
+rm ~/.zshenv
+
+# 4. Remove tmux symlink
+rm ~/.config/tmux/tmux.conf
+
+# 5. Close and reopen terminal
+# You're back to default shell. Restore ~/.config/zsh.bak if needed.
+```
+
+**To temporarily disable without uninstalling:**
+
+```bash
+# Disable zinit plugin loading (keeps config intact)
+# Edit ~/.config/zsh/modules/local.zsh:
+cat >> ~/.config/zsh/modules/local.zsh << 'EOF'
+# Temporarily disable plugins
+export ZINIT_SKIP=1
+EOF
+
+# Then restart shell
+exec zsh
+
+# To re-enable, remove the ZINIT_SKIP=1 line and restart
+```
+
+**To reset to factory defaults:**
+
+```bash
+# Backup your current setup
+cp -r ~/.config/zsh ~/.config/zsh.custom-backup
+
+# Reclone and overwrite
+rm -rf ~/.config/zsh
+npx tiged nandordudas/zsh-config ~/.config/zsh --disable-cache
+
+# Or update to latest from git
+cd ~/.config/zsh && git pull origin main
+zsh-cache-clear && exec zsh
+```
 
 ---
 
@@ -622,7 +793,7 @@ exec zsh                      # Reload
 
 **Q: Will this config work on my machine?**
 
-A: Tested on Ubuntu 22.04+ and macOS 12+. Requires Bash 4+, Zsh 5.4+. WSL works (see WSL notes in prerequisites).
+A: Tested on Ubuntu 22.04+, macOS 12+, and WSL2. Requires Bash 4+, Zsh 5.4+. See [Server-Only Setup](#server-only-setup-production) for production deployments (fewer dependencies, no dev tools).
 
 **Q: Can I fork this and customize it?**
 
@@ -643,6 +814,10 @@ A: Open an issue on [GitHub](https://github.com/nandordudas/zsh-config/issues).
 **Q: Is this security-tested?**
 
 A: It's a personal config, not a security-hardened system. Review before using in sensitive environments.
+
+**Q: Why is Claude excluded from the server setup?**
+
+A: Claude is a development tool. Server setups should not include API keys or client tools that require authentication. Use the [Server-Only Setup](#server-only-setup-production) guide to install a minimal zsh config on production without dev dependencies.
 
 ---
 
