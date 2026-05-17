@@ -468,41 +468,60 @@ zsh-health() {
 
   # Check core tools
   printf "Core Tools:\n"
-  local -a tools=(
-    'git:git --version'
-    'zsh:zsh --version'
-    'fzf:fzf --version'
-    'eza:eza --version'
-    'bat:batcat --version'
-    'fd:fdfind --version'
-  )
-  for spec in "${tools[@]}"; do
-    local name="${spec%%:*}" cmd="${spec##*:}"
-    if output=$($cmd 2>&1); then
-      printf "  ${_COLOR_GREEN}✓${_COLOR_RESET} %-8s %s\n" "$name" "${output%% *}"
-    else
-      printf "  ${_COLOR_RED}✗${_COLOR_RESET} %-8s NOT FOUND\n" "$name"
-      (( issues++ ))
-    fi
-  done
+  if command -v git &>/dev/null; then
+    printf "  ${_COLOR_GREEN}✓${_COLOR_RESET} %-8s %s\n" "git" "$(git --version 2>&1 | head -1)"
+  else
+    printf "  ${_COLOR_RED}✗${_COLOR_RESET} %-8s NOT FOUND\n" "git"; (( issues++ ))
+  fi
+  if command -v zsh &>/dev/null; then
+    printf "  ${_COLOR_GREEN}✓${_COLOR_RESET} %-8s %s\n" "zsh" "$(zsh --version 2>&1 | head -1)"
+  else
+    printf "  ${_COLOR_RED}✗${_COLOR_RESET} %-8s NOT FOUND\n" "zsh"; (( issues++ ))
+  fi
+  if command -v fzf &>/dev/null; then
+    printf "  ${_COLOR_GREEN}✓${_COLOR_RESET} %-8s %s\n" "fzf" "$(fzf --version 2>&1)"
+  else
+    printf "  ${_COLOR_RED}✗${_COLOR_RESET} %-8s NOT FOUND\n" "fzf"; (( issues++ ))
+  fi
+  if command -v eza &>/dev/null; then
+    printf "  ${_COLOR_GREEN}✓${_COLOR_RESET} %-8s %s\n" "eza" "$(eza --version 2>&1 | head -1)"
+  else
+    printf "  ${_COLOR_RED}✗${_COLOR_RESET} %-8s NOT FOUND\n" "eza"; (( issues++ ))
+  fi
+  if command -v batcat &>/dev/null; then
+    printf "  ${_COLOR_GREEN}✓${_COLOR_RESET} %-8s %s\n" "bat" "$(batcat --version 2>&1 | head -1)"
+  else
+    printf "  ${_COLOR_RED}✗${_COLOR_RESET} %-8s NOT FOUND\n" "bat"; (( issues++ ))
+  fi
+  if command -v fdfind &>/dev/null; then
+    printf "  ${_COLOR_GREEN}✓${_COLOR_RESET} %-8s %s\n" "fd" "$(fdfind --version 2>&1 | head -1)"
+  else
+    printf "  ${_COLOR_RED}✗${_COLOR_RESET} %-8s NOT FOUND\n" "fd"; (( issues++ ))
+  fi
   printf "\n"
 
   # Check language tools
   printf "Language Tools:\n"
-  local -a langs=(
-    'Go:go version'
-    'Rust:rustc --version'
-    'Node:node --version'
-    'Python:python3 --version'
-  )
-  for spec in "${langs[@]}"; do
-    local name="${spec%%:*}" cmd="${spec##*:}"
-    if output=$($cmd 2>&1); then
-      printf "  ${_COLOR_GREEN}✓${_COLOR_RESET} %-10s %s\n" "$name" "$output"
-    else
-      printf "  ${_COLOR_YELLOW}⊙${_COLOR_RESET} %-10s not installed\n" "$name"
-    fi
-  done
+  if command -v go &>/dev/null; then
+    printf "  ${_COLOR_GREEN}✓${_COLOR_RESET} %-10s %s\n" "Go" "$(go version 2>&1)"
+  else
+    printf "  ${_COLOR_YELLOW}⊙${_COLOR_RESET} %-10s not installed\n" "Go"
+  fi
+  if command -v rustc &>/dev/null; then
+    printf "  ${_COLOR_GREEN}✓${_COLOR_RESET} %-10s %s\n" "Rust" "$(rustc --version 2>&1)"
+  else
+    printf "  ${_COLOR_YELLOW}⊙${_COLOR_RESET} %-10s not installed\n" "Rust"
+  fi
+  if command -v node &>/dev/null; then
+    printf "  ${_COLOR_GREEN}✓${_COLOR_RESET} %-10s %s\n" "Node" "$(node --version 2>&1)"
+  else
+    printf "  ${_COLOR_YELLOW}⊙${_COLOR_RESET} %-10s not installed\n" "Node"
+  fi
+  if command -v python3 &>/dev/null; then
+    printf "  ${_COLOR_GREEN}✓${_COLOR_RESET} %-10s %s\n" "Python" "$(python3 --version 2>&1)"
+  else
+    printf "  ${_COLOR_YELLOW}⊙${_COLOR_RESET} %-10s not installed\n" "Python"
+  fi
   printf "\n"
 
   # Check PATH
@@ -537,7 +556,7 @@ zsh-health() {
     (( issues++ ))
   fi
 
-  if (( ${+functions[zoxide]} )); then
+  if command -v z &>/dev/null; then
     printf "  ${_COLOR_GREEN}✓${_COLOR_RESET} Zoxide (smart cd) available\n"
   else
     printf "  ${_COLOR_YELLOW}⊙${_COLOR_RESET} Zoxide not loaded\n"
