@@ -473,6 +473,23 @@ exec zsh -l          # Restart shell (regenerates caches)
 
 > **Don't delete** `~/.local/share/zinit` — it contains compiled plugins. Deleting it forces a re-download on next start.
 
+### Free up disk space
+
+Smart cleanup of project directories and system caches:
+
+```bash
+freespace --dry-run              # See what would be deleted (no changes)
+freespace                        # Clean project dirs (node_modules, vendor in ~/code)
+freespace --aggressive           # Also clean system caches (npm, pip, go, cargo, apt)
+freespace --aggressive --dry-run # Preview aggressive cleanup
+```
+
+**What it cleans:**
+- **Always:** `node_modules` and `vendor` dirs in `~/code` (reclaimable at any time)
+- **With `--aggressive`:** npm cache (1.5G), pip cache, Go build cache, Cargo cache, apt cache
+
+Uses `confirm()` to prompt before deleting — safe against accidents.
+
 ### Interact with git
 
 **forgit aliases** (interactive git operations with fzf):

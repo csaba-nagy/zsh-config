@@ -666,3 +666,136 @@ zsh-cache-clear() {
 #
 # NOTE: GitHub shows a "Verified" badge only after the key is registered as a
 #       Signing Key on GitHub (step 3 above). Local verification works immediately.
+
+# =============================================================================
+# DISK SPACE CLEANUP
+# =============================================================================
+
+# Smart disk cleanup: targets project dirs (node_modules, vendor) and system caches
+# Usage: freespace [--dry-run] [--aggressive]
+#   --dry-run     Show what would be deleted without deleting
+#   --aggressive  Also clean system caches (apt, npm, pip, go, cargo)
+freespace() {
+  local dry_run=0 aggressive=0
+  while [[ -n "$1" ]]; do
+    case "$1" in
+      --dry-run)    dry_run=1; shift ;;
+      --aggressive) aggressive=1; shift ;;
+      *)            printf "Usage: freespace [--dry-run] [--aggressive]\n" >&2; return 1 ;;
+    esac
+  done
+
+  local start_kb=$(/bin/df -k "$HOME" | awk 'NR==2 {print $4}')
+  local removed_kb=0
+  local -a actions=()
+
+  printf "${_COLOR_YELLOW}Analyzing disk usage...${_COLOR_RESET}\n\n"
+
+  # === Project cleanup (always safe) ===
+  printf "Project directories (~/code):\n"
+
+  # Node modules
+  local nm_count=$(find "$HOME/code" -maxdepth 4 -type d -name node_modules 2>/dev/null | wc -l)
+  if (( nm_count > 0 )); then
+    local nm_size=$(find "$HOME/code" -maxdepth 4 -type d -name node_modules 2>/dev/null -exec du -sk {} + | awk '{s+=$1} END {print s}')
+    printf "  ${_COLOR_YELLOW}→${_COLOR_RESET} node_modules (%d dirs, %s MB)\n" "$nm_count" "$(( nm_size / 1024 ))"
+    actions+=("find '$HOME/code' -maxdepth 4 -type d -name node_modules -exec rm -rf {} + 2>/dev/null || true")
+    (( removed_kb += nm_size ))
+  fi
+
+  # Vendor directories
+  local vendor_count=$(find "$HOME/code" -maxdepth 4 -type d -name vendor 2>/dev/null | wc -l)
+  if (( vendor_count > 0 )); then
+    local vendor_size=$(find "$HOME/code" -maxdepth 4 -type d -name vendor 2>/dev/null -exec du -sk {} + | awk '{s+=$1} END {print s}')
+    printf "  ${_COLOR_YELLOW}→${_COLOR_RESET} vendor (%d dirs, %s MB)\n" "$vendor_count" "$(( vendor_size / 1024 ))"
+    actions+=("find '$HOME/code' -maxdepth 4 -type d -name vendor -exec rm -rf {} + 2>/dev/null || true")
+    (( removed_kb += vendor_size ))
+  fi
+
+  printf "\n"
+
+  # === System cache cleanup (if --aggressive) ===
+  if (( aggressive )); then
+    printf "System caches (--aggressive):\n"
+
+    # npm cache
+    if [[ -d "$HOME/.npm" ]]; then
+      local npm_size=$(/bin/du -sk "$HOME/.npm" 2>/dev/null | awk '{print $1}' | head -1)
+      npm_size=${npm_size:-0}
+      if (( npm_size > 0 )); then
+        printf "  ${_COLOR_YELLOW}→${_COLOR_RESET} npm cache (%s MB)\n" "$(( npm_size / 1024 ))"
+        actions+=("npm cache clean --force 2>/dev/null || true")
+        (( removed_kb += npm_size ))
+      fi
+    fi
+
+    # pip cache
+    if [[ -d "$HOME/.cache/pip" ]]; then
+      local pip_size=$(/bin/du -sk "$HOME/.cache/pip" 2>/dev/null | awk '{print $1}' | head -1)
+      pip_size=${pip_size:-0}
+      if (( pip_size > 0 )); then
+        printf "  ${_COLOR_YELLOW}→${_COLOR_RESET} pip cache (%s MB)\n" "$(( pip_size / 1024 ))"
+        actions+=("rm -rf '$HOME/.cache/pip' 2>/dev/null || true")
+        (( removed_kb += pip_size ))
+      fi
+    fi
+
+    # Go build cache
+    if [[ -d "$HOME/.cache/go-build" ]]; then
+      local go_size=$(/bin/du -sk "$HOME/.cache/go-build" 2>/dev/null | awk '{print $1}' | head -1)
+      go_size=${go_size:-0}
+      if (( go_size > 0 )); then
+        printf "  ${_COLOR_YELLOW}→${_COLOR_RESET} go build cache (%s MB)\n" "$(( go_size / 1024 ))"
+        actions+=("go clean -cache 2>/dev/null || true; rm -rf '$HOME/.cache/go-build' 2>/dev/null || true")
+        (( removed_kb += go_size ))
+      fi
+    fi
+
+    # Cargo cache
+    if [[ -d "$HOME/.cargo/registry/cache" ]]; then
+      local cargo_size=$(/bin/du -sk "$HOME/.cargo/registry/cache" 2>/dev/null | awk '{print $1}' | head -1)
+      cargo_size=${cargo_size:-0}
+      if (( cargo_size > 0 )); then
+        printf "  ${_COLOR_YELLOW}→${_COLOR_RESET} cargo registry cache (%s MB)\n" "$(( cargo_size / 1024 ))"
+        actions+=("rm -rf '$HOME/.cargo/registry/cache' 2>/dev/null || true")
+        (( removed_kb += cargo_size ))
+      fi
+    fi
+
+    # APT cache
+    if command -v apt &>/dev/null; then
+      local apt_size=$(du -sk /var/cache/apt 2>/dev/null | awk '{print $1}')
+      (( apt_size > 0 )) && printf "  ${_COLOR_YELLOW}→${_COLOR_RESET} apt cache (%s MB, requires sudo)\n" "$(( apt_size / 1024 ))"
+      actions+=("sudo apt-get autoclean 2>/dev/null || true")
+      (( removed_kb += apt_size ))
+    fi
+
+    printf "\n"
+  fi
+
+  # Summary
+  printf "Total space to recover: ${_COLOR_GREEN}%s MB${_COLOR_RESET}\n\n" "$(( removed_kb / 1024 ))"
+
+  # Dry-run or execute
+  if (( dry_run )); then
+    printf "${_COLOR_YELLOW}Dry-run mode — no changes made.${_COLOR_RESET}\n"
+    printf "Run ${_COLOR_GREEN}freespace${_COLOR_RESET}"
+    (( aggressive )) && printf " ${_COLOR_GREEN}--aggressive${_COLOR_RESET}"
+    printf " to clean.\n"
+    return 0
+  fi
+
+  if ! confirm "Delete these directories?"; then
+    printf "Cancelled.\n"
+    return 1
+  fi
+
+  printf "\n${_COLOR_YELLOW}Cleaning...${_COLOR_RESET}\n"
+  for action in "${actions[@]}"; do
+    eval "$action"
+  done
+
+  local end_kb=$(/bin/df -k "$HOME" | awk 'NR==2 {print $4}')
+  local freed=$(( (end_kb - start_kb) / 1024 ))
+  printf "\n${_COLOR_GREEN}✓ Done!${_COLOR_RESET} Freed ~${_COLOR_GREEN}%s MB${_COLOR_RESET}\n" "$freed"
+}
