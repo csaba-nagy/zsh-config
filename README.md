@@ -1,7 +1,7 @@
 # zsh config
 
-> [!WARNING]
-> **Updated to v1.1.0!** If you're updating from before this release, see [MIGRATION_v1.1.0.md](docs/MIGRATION_v1.1.0.md) for a quick guide. Good news: no breaking changes, but you'll get 3-5x faster upgrades! 🚀
+> [!SUCCESS]
+> **Latest improvements:** Node now accessible without manual intervention (fixed). `upgrade` function refactored: cleaner code, new `--only` flag for selective updates, `--dry-run` for safe testing, and `zsh-health` diagnostic tool. Network resilience improved — failures on one tool don't block others.
 
 > [!NOTE]
 > This is an **opinionated** personal zsh configuration. It reflects specific tool choices, aliases, and workflows that suit one developer's daily use. Fork and adapt it rather than using it as-is.
@@ -36,11 +36,13 @@ Fast, modular zsh configuration using [Zinit](https://github.com/zdharma-continu
 
 ## Quick Start (experienced users only)
 
-If you have Rust, Node.js, Go, Starship, fzf, direnv, and GitHub CLI installed:
+If you have Rust, Go, Starship, fzf, direnv, and GitHub CLI installed:
 
 ```bash
 npx tiged nandordudas/zsh-config ~/.config/zsh --disable-cache
 # Then follow Installation steps 2-5 only
+# Node is auto-installed during first shell start (no manual install needed)
+```
 
 ---
 
@@ -341,6 +343,12 @@ This keeps `.zprofile` clean and shareable while allowing per-machine customizat
 > [!TIP]
 > Run these checks after a fresh install or after pulling updates to confirm everything is wired up correctly.
 
+**Quick health check:**
+```bash
+zsh-health  # Single command verifies all critical tools + PATH + config
+```
+
+**Detailed checks:**
 ```bash
 # Startup time
 time zsh -i -c exit    # Expected: ~50-100ms (user time)
@@ -348,14 +356,20 @@ time zsh -i -c exit    # Expected: ~50-100ms (user time)
 # Check HISTFILE is correct
 echo $HISTFILE         # Expected: ~/.local/share/zsh/history
 
+# Node immediately available (no manual upgrade needed)
+node --version         # Expected: v24+
+
 # Check fzf version (requires >= 0.49.0 for forgit)
-fzf --version    # → 0.68.x from ~/.fzf/bin
+fzf --version          # Expected: 0.68.x from ~/.fzf/bin
 
 # Check eval caches were created
-ls ~/.cache/zsh/ # → starship.zsh  zoxide.zsh  fnm.zsh  direnv.zsh
+ls ~/.cache/zsh/       # Expected: starship.zsh  zoxide.zsh  fnm.zsh  direnv.zsh
 
-# Test forgit
-glo              # interactive git log with fzf
+# Test forgit (git log picker)
+glo                    # interactive git log with fzf
+
+# Test upgrade (dry-run, no changes)
+upgrade --dry-run      # Shows which tools would be updated
 ```
 
 ## Testing
@@ -408,3 +422,89 @@ exec zsh -l      # regenerates caches on next start
 
 > [!CAUTION]
 > Do not delete `~/.local/share/zinit` unless you intend to reinstall all plugins from scratch. Zinit stores compiled plugin snapshots there; removing it triggers a full re-download on next shell start.
+
+---
+
+## Diagnostics & Troubleshooting
+
+### Tools not available after fresh install
+
+Run the diagnostic:
+```bash
+zsh-health
+```
+
+This checks:
+- All core tools installed (git, zsh, fzf, eza, bat, fd)
+- Language tools present (Go, Rust, Node, Python)
+- PATH configuration correct
+- Shell setup (ZDOTDIR, Zinit, Zoxide)
+
+Reports missing dependencies and fixable issues.
+
+### Node not available immediately after install
+
+Node is now auto-installed during shell initialization if FNM has no default. Just start a new shell — Node will be available without running `upgrade` manually.
+
+If still missing:
+```bash
+fnm install --lts
+fnm default lts-latest
+exec zsh
+```
+
+### Slow shell startup
+
+Profile shell startup:
+```bash
+time zsh -i -c exit  # measure total time
+zsh -i -c 'set -x; source ~/.zshrc' 2>&1 | grep '^+'  # see each step
+```
+
+If plugins are slow:
+```bash
+zinit report  # show load times per plugin
+```
+
+Most plugins load in turbo mode (deferred until first use), so slow startup is rare.
+
+### Upgrade failing silently
+
+Test with dry-run to see what would run:
+```bash
+upgrade --dry-run
+upgrade --dry-run --only node  # check specific tool
+```
+
+If network is slow/unreliable:
+```bash
+upgrade --only apt,rust  # skip slow checks (go/node/claude)
+```
+
+Jobs are resilient to timeouts — one tool failing doesn't block others.
+
+### Terminal glitches after running upgrade
+
+If you see stray `[N] + exit` messages, they're harmless (cleared jobs). If keybindings break:
+```bash
+zsh-cache-clear && exec zsh  # reload with fresh caches
+```
+
+---
+
+## Updating
+
+### Pull latest changes
+
+```bash
+cd ~/.config/zsh && git pull origin main
+zsh-cache-clear  # clear eval caches
+exec zsh         # reload with new config
+```
+
+### Check what changed
+
+```bash
+cd ~/.config/zsh && git log --oneline -n 5
+git diff HEAD~3..HEAD -- modules/  # last 3 commits
+```

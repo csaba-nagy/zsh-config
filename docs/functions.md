@@ -109,46 +109,111 @@ Aliased as `ik` in `aliases.zsh`.
 
 ## upgrade
 
-Comprehensive system upgrade. Runs all jobs in parallel:
+Comprehensive parallel system upgrade. Smart recovery from network failures.
 
+**Usage:**
+```bash
+upgrade                          # Full upgrade (all tools)
+upgrade --only node,rust         # Selective (just node + rust)
+upgrade --dry-run                # Preview without executing
+upgrade --dry-run --only claude  # Preview specific tools
+```
+
+**What it upgrades (parallel jobs):**
 - `apt update && apt-get upgrade --autoremove --purge`
-- `zinit self-update && zinit update --all` (if zinit is loaded)
-- **Rust**: `rustup update` + smart cargo updater (if rustup/cargo present)
-  - Checks for updates with dry-run first (skips if nothing to update)
-  - **Hybrid prebuilt binary strategy**: Downloads prebuilt binaries from GitHub releases first (30-60s)
-  - Falls back to source rebuild only if prebuilts unavailable
-- Go version check via `go.dev/VERSION` API — updates only if behind (if `g` is present)
-- `fnm install --lts` + `npm install --global ...` (if fnm present)
-- `claude update` (if claude present)
+- `zinit self-update && zinit update --all` (if zinit loaded)
+- **Rust**: `rustup update` + smart cargo updater
+  - Prebuilt binaries first (~30-60s), falls back to source rebuild
+  - Skips rebuild if nothing to update
+- **Go**: checks `go.dev/VERSION` API, updates only if behind (if `g` present)
+- **Node**: `fnm install --lts` + global npm packages (if fnm present)
+- **Claude**: checks npm registry for updates (if claude present)
 
-A live spinner shows each job's status. Failed job logs are printed after all
-jobs complete, followed by a version summary.
+All jobs run simultaneously with live spinner feedback. Failed job logs appear
+after all jobs complete, followed by version summary.
 
+**Example:**
 ```
 $ upgrade
-  ✓ [apt     ] done       8s
-  ✓ [zinit   ] done       2s
-  ✓ [rust    ] done      12s
+  ✓ [apt     ] done       6s
+  ✓ [zinit   ] done       0s
+  ✓ [rust    ] done       2s
   ✓ [go      ] done       1s
-  ✓ [node    ] done       4s
-  ✓ [claude  ] done       2s
+  ✓ [node    ] done       2s
+  ✓ [claude  ] done       1s
 
-Finished in 12s
+Finished in 6s
 
   OS:          Ubuntu 24.04.4 LTS
-  Kernel:      6.6.87.2-microsoft-standard-WSL2
-  Go:          go1.26.2
-  Rust:        1.94.1
-  Cargo:       1.94.1
-  Node:        v24.14.1
-  npm:         11.12.1
-  pnpm:        10.33.0
-  Claude:      2.1.104 (Claude Code)
-  Docker:      29.4.0
+  Kernel:      6.6.114.1-microsoft-standard-WSL2
+  Go:          go1.26.3
+  Rust:        rustc 1.95.0
+  Cargo:       1.95.0
+  Node:        v24.15.0
+  npm:         11.14.1
+  pnpm:        11.1.2
+  Claude:      2.1.143
+  Docker:      29.5.0
   Git:         2.43.0
 
 ✓ All done!
 ```
+
+**Resilience:**
+- Network failures on any tool don't block others (e.g., curl timeout on go.dev doesn't fail job)
+- Graceful fallback to skip upgrade if check unavailable
+- `--dry-run` lets you preview without risk
+
+---
+
+## zsh-health
+
+System diagnostic. Scans for installed tools, verifies PATH configuration,
+and checks shell setup status.
+
+Use this after a fresh install or when tools stop working.
+
+```
+$ zsh-health
+
+=== ZSH Configuration Health ===
+
+Core Tools:
+  ✓ git      git version 2.43.0
+  ✓ zsh      zsh 5.9 (x86_64-ubuntu-linux-gnu)
+  ✓ fzf      0.68.0 (b908f7a0)
+  ✓ eza      eza - A modern, maintained replacement for ls
+  ✓ bat      bat 0.24.0
+  ✓ fd       fdfind 9.0.0
+
+Language Tools:
+  ✓ Go         go version go1.26.3 linux/amd64
+  ✓ Rust       rustc 1.95.0 (59807616e 2026-04-14)
+  ✓ Node       v24.15.0
+  ✓ Python     Python 3.12.3
+
+PATH Configuration:
+  • 42 directories in PATH
+  ✓ /home/user/.cargo/bin (Rust/Cargo)
+  ✓ /home/user/.local/bin (Local tools)
+  ✓ /home/user/go/bin (Go tools)
+  ✓ /usr/local/bin (System tools)
+
+ZSH Configuration:
+  ✓ ZDOTDIR = /home/user/.config/zsh
+  ✓ Zinit plugins loaded
+  ✓ Zoxide (smart cd) available
+
+✓ All critical tools present
+```
+
+**Checks performed:**
+- Core tools: git, zsh, fzf, eza, bat, fd
+- Languages: Go, Rust, Node, Python
+- PATH: key directories present (.cargo, .local, go, /usr/local)
+- Shell: ZDOTDIR set, Zinit loaded, Zoxide available
+
+Exit code 0 if all critical checks pass, 1 if issues detected.
 
 ---
 
@@ -189,13 +254,13 @@ tcp    LISTEN  127.0.0.1:6379       redis-server
 
 ---
 
-## path
+## show_path
 
 Display PATH entries one per line, numbered. Useful for debugging PATH
 ordering after adding new entries.
 
 ```
-$ path
+$ show_path
      1	/home/user/.local/bin
      2	/home/user/.fzf/bin
      3	/home/user/.cargo/bin
