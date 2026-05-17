@@ -44,6 +44,16 @@ prompt() {
 prompt GIT_NAME   "Git name"  ""
 prompt GIT_EMAIL  "Git email" ""
 
+# Validate required fields
+if [[ -z "$GIT_NAME" ]]; then
+  printf "Error: Git name is required\n" >&2
+  exit 1
+fi
+if [[ -z "$GIT_EMAIL" ]]; then
+  printf "Error: Git email is required\n" >&2
+  exit 1
+fi
+
 # =============================================================================
 # PATHS
 # =============================================================================
@@ -59,12 +69,24 @@ chmod 700 "$HOME/.ssh"
 # =============================================================================
 if [[ ! -f "$SSH_KEY" ]]; then
   printf "Generating SSH key for git signing...\n"
-  ssh-keygen -t ed25519 -C "$GIT_EMAIL" -f "$SSH_KEY" -N ""
+  ssh-keygen -t ed25519 -C "$GIT_EMAIL" -f "$SSH_KEY" -N "" || {
+    printf "Error: Failed to generate SSH key\n" >&2
+    exit 1
+  }
+  chmod 600 "$SSH_KEY"
 else
   printf "SSH key already exists: %s\n" "$SSH_KEY"
 fi
 
-SSH_PUB=$(cat "${SSH_KEY}.pub")
+if [[ ! -f "${SSH_KEY}.pub" ]]; then
+  printf "Error: SSH public key not found at %s\n" "${SSH_KEY}.pub" >&2
+  exit 1
+fi
+
+SSH_PUB=$(cat "${SSH_KEY}.pub") || {
+  printf "Error: Failed to read SSH public key\n" >&2
+  exit 1
+}
 
 # allowed_signers — used by `git verify-commit` for local verification
 printf "%s %s\n" "$GIT_EMAIL" "$SSH_PUB" > "$GIT_DIR/allowed_signers"
@@ -282,8 +304,14 @@ cat > "$GIT_DIR/config" << 'CONFIG_EOF'
 # includeIf activates the matching per-host config only for repos under the
 # given path. This lets you keep separate identities (signingKey, name, email)
 # per host without any manual switching — git selects the right one based on
-# where the repo lives. Add more blocks here for other hosts (e.g. GitLab,
-# work Bitbucket) following the same pattern.
+# where the repo lives.
+#
+# CUSTOMIZE: If your repos live elsewhere, edit these paths. Examples:
+#   [includeIf "gitdir:~/projects/work/**/.git"]
+#   [includeIf "gitdir:/home/user/code/gitlab/**/.git"]
+#
+# Add more blocks here for other hosts (e.g. GitLab, work Bitbucket) following
+# the same pattern as github/.gitconfig and bitbucket/.gitconfig.
 [includeIf "gitdir:~/code/git_hub/**/.git"]
 	path = ~/.config/git/github/.gitconfig
 [includeIf "gitdir:~/code/bit_bucket/**/.git"]
@@ -424,10 +452,14 @@ cat > "$GIT_DIR/config" << 'CONFIG_EOF'
 CONFIG_EOF
 
 # Inject personal values (sed delimiter | avoids conflicts with path slashes)
-sed -i \
+sed -i.bak \
   -e "s|__GIT_NAME__|$GIT_NAME|g" \
   -e "s|__GIT_EMAIL__|$GIT_EMAIL|g" \
-  "$GIT_DIR/config"
+  "$GIT_DIR/config" || {
+  printf "Error: Failed to configure git settings\n" >&2
+  exit 1
+}
+rm -f "$GIT_DIR/config.bak"
 
 # =============================================================================
 # GITHUB CREDENTIAL HELPER (gh CLI)
@@ -437,10 +469,14 @@ sed -i \
 # =============================================================================
 GH_BIN=$(command -v gh 2>/dev/null || true)
 if [[ -n "$GH_BIN" ]]; then
-  git config --file "$GIT_DIR/config" credential."https://github.com".helper ""
-  git config --file "$GIT_DIR/config" --add credential."https://github.com".helper "!$GH_BIN auth git-credential"
-  git config --file "$GIT_DIR/config" credential."https://gist.github.com".helper ""
-  git config --file "$GIT_DIR/config" --add credential."https://gist.github.com".helper "!$GH_BIN auth git-credential"
+  git config --file "$GIT_DIR/config" credential."https://github.com".helper "" || true
+  git config --file "$GIT_DIR/config" --add credential."https://github.com".helper "!$GH_BIN auth git-credential" || {
+    printf "Warning: Failed to configure GitHub credential helper\n" >&2
+  }
+  git config --file "$GIT_DIR/config" credential."https://gist.github.com".helper "" || true
+  git config --file "$GIT_DIR/config" --add credential."https://gist.github.com".helper "!$GH_BIN auth git-credential" || {
+    printf "Warning: Failed to configure Gist credential helper\n" >&2
+  }
 fi
 
 # =============================================================================
