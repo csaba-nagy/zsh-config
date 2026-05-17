@@ -327,22 +327,22 @@ upgrade() {
   }
   _upgrade_go() {
     [[ ! -x "$HOME/go/bin/g" ]] && return 0
-    local local_go=$(go version 2>/dev/null | awk '{print $3}' | sed 's/go//')
-    local remote_go=$(curl -sf 'https://go.dev/VERSION?m=text' 2>/dev/null | head -1 | sed 's/go//')
-    [[ -n "$remote_go" && "$local_go" != "$remote_go" ]] && "$HOME/go/bin/g" install latest && "$HOME/go/bin/g" use latest
+    local local_go=$(go version 2>/dev/null | awk '{print $3}' | sed 's/go//') || return 0
+    local remote_go=$(curl -sf 'https://go.dev/VERSION?m=text' 2>/dev/null | head -1 | sed 's/go//') || return 0
+    [[ -n "$remote_go" && "$local_go" != "$remote_go" ]] && "$HOME/go/bin/g" install latest && "$HOME/go/bin/g" use latest || true
   }
   _upgrade_node() {
     command -v fnm &>/dev/null || return 0
-    local lts=$(fnm list-remote --lts 2>/dev/null | tail -1 | awk '{print $1}')
-    local current=$(fnm current 2>/dev/null)
-    [[ "v${lts#v}" != "v${current#v}" ]] && fnm install --lts && fnm default lts-latest && fnm use lts-latest
-    npm outdated --global 2>/dev/null | grep -q . && npm install --global npm@latest pnpm@latest @antfu/ni eslint taze npkill
+    local lts=$(fnm list-remote --lts 2>/dev/null | tail -1 | awk '{print $1}') || return 0
+    local current=$(fnm current 2>/dev/null) || return 0
+    [[ "v${lts#v}" != "v${current#v}" ]] && fnm install --lts && fnm default lts-latest && fnm use lts-latest || true
+    npm outdated --global 2>/dev/null | grep -q . && npm install --global npm@latest pnpm@latest @antfu/ni eslint taze npkill || true
   }
   _upgrade_claude() {
     command -v claude &>/dev/null || return 0
-    local current=$(claude --version 2>/dev/null | awk '{print $1}')
-    local latest=$(npm view @anthropic-ai/claude-code version 2>/dev/null)
-    [[ -n "$latest" && "$current" != "$latest" ]] && claude update
+    local current=$(claude --version 2>/dev/null | awk '{print $1}') || return 0
+    local latest=$(npm view @anthropic-ai/claude-code version 2>/dev/null) || return 0
+    [[ -n "$latest" && "$current" != "$latest" ]] && claude update || true
   }
 
   # Launch jobs (or show dry-run)
@@ -435,14 +435,14 @@ upgrade() {
   _ver 'OS:'     lsb_release -ds
   _ver 'Kernel:' uname -r
   _ver 'Go:'     sh -c 'go version 2>/dev/null | awk "{print \$3}"'
-  _ver 'Rust:'   rustc --version | awk '{print $2}'
-  _ver 'Cargo:'  cargo --version | awk '{print $2}'
+  _ver 'Rust:'   sh -c 'rustc --version 2>/dev/null | awk "{print \$2}"'
+  _ver 'Cargo:'  sh -c 'cargo --version 2>/dev/null | awk "{print \$2}"'
   _ver 'Node:'   node --version
   _ver 'npm:'    npm --version
   _ver 'pnpm:'   pnpm --version
-  _ver 'Claude:' claude --version | awk '{print $1}'
-  _ver 'Docker:' docker --version | awk '{print $3}' | tr -d ','
-  _ver 'Git:'    git --version | awk '{print $3}'
+  _ver 'Claude:' sh -c 'claude --version 2>/dev/null | awk "{print \$1}"'
+  _ver 'Docker:' sh -c 'docker --version 2>/dev/null | awk "{print \$3}" | tr -d ","'
+  _ver 'Git:'    sh -c 'git --version 2>/dev/null | awk "{print \$3}"'
   printf '\n'
 
   trap - INT TERM
