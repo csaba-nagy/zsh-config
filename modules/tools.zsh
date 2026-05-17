@@ -40,12 +40,36 @@ _ztool_init zoxide "$(command -v zoxide)" "zoxide init zsh"
 # =============================================================================
 # FNM (Node Version Manager)
 # =============================================================================
-_ztool_init fnm "$HOME/.cargo/bin/fnm" "fnm env --use-on-cd --shell zsh"
+_fnm_bin="$(command -v fnm 2>/dev/null || echo "$HOME/.cargo/bin/fnm")"
+
+# Ensure FNM has a default Node version installed before init
+if [[ -x "$_fnm_bin" ]]; then
+  if [[ -z "$($_fnm_bin list 2>/dev/null | grep default)" ]]; then
+    $_fnm_bin install --lts &>/dev/null || true
+  fi
+fi
+
+_ztool_init fnm "$_fnm_bin" "fnm env --use-on-cd --shell zsh"
+
+# FNM's multishell mode may not work in subshells; fallback: add default version to PATH
+if ! command -v node &>/dev/null && [[ -x "$_fnm_bin" ]]; then
+  _fnm_default=$($_fnm_bin list 2>/dev/null | grep default | awk '{print $2}')
+  _fnm_default_bin="${FNM_DIR:-$HOME/.local/share/fnm}/node-versions/${_fnm_default}/installation/bin"
+  if [[ -d "$_fnm_default_bin" ]]; then
+    export PATH="$_fnm_default_bin:$PATH"
+  fi
+  unset _fnm_default _fnm_default_bin
+fi
+
+unset _fnm_bin
 
 # =============================================================================
 # DIRENV (project-specific environments)
+# Must initialize before zoxide so project-specific PATH changes apply to cd
 # =============================================================================
-_ztool_init direnv "$HOME/.local/bin/direnv" "direnv hook zsh"
+_direnv_bin="$(command -v direnv 2>/dev/null || echo "$HOME/.local/bin/direnv")"
+_ztool_init direnv "$_direnv_bin" "direnv hook zsh"
+unset _direnv_bin
 
 # =============================================================================
 # FZF (Fuzzy Finder)

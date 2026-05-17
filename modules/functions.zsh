@@ -66,8 +66,10 @@ confirm() {
 }
 
 # Bootstrap new Git project
-# Requires the 'git bootstrap' alias from scripts/git-setup.sh to be installed.
+# Requires the 'git bootstrap' alias to be installed.
 bootstrap() {
+  [[ -x "$(command -v git)" ]] || { printf "Error: git not found\n" >&2; return 1; }
+
   if ! git config --get alias.bootstrap &>/dev/null; then
     printf "Error: 'git bootstrap' alias not found.\n" >&2
     printf "Solution: Run ~/.config/zsh/scripts/git-setup.sh to set up git configuration.\n" >&2
@@ -94,11 +96,11 @@ interactive_kill() {
             --preview="echo {}" \
             --preview-window=down:2:wrap \
       | awk '{print $2}'
-  )
+  ) || return 1
 
-  [[ -z "$pids" ]] && return 0
+  [[ -z "$pids" ]] && { printf "No processes selected\n" >&2; return 0; }
 
-  print -l $=pids | xargs kill -15
+  print -l $=pids | xargs kill -15 || return 1
   printf "✓ Killed PIDs: %s\n" "${pids//$'\n'/ }"
 }
 

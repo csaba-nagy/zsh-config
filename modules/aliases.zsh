@@ -32,20 +32,15 @@ alias cdd='cd -'  # Back to previous directory
 
 # =============================================================================
 # DOCKER
+# Most common aliases are provided by OMZP::docker and OMZP::docker-compose.
+# These are custom extensions that don't conflict with the plugin aliases.
 # =============================================================================
-# alias dc='docker compose'        # use dco  (OMZP::docker-compose)
-# alias dc-down='docker compose down'   # use dcdn (OMZP::docker-compose)
-# alias dc-exec='docker compose exec'   # use dce  (OMZP::docker-compose)
-# alias dc-logs='docker compose logs -f'  # use dclf (OMZP::docker-compose)
-alias dc-up='UID=$(id -u) GID=$(id -g) docker compose up'  # unique: injects host UID/GID
-# alias dps='docker ps'            # use dps  (OMZP::docker)
-# alias dpsa='docker ps -a'        # use dpsa (OMZP::docker)
-# alias dimg='docker images'       # use dils (OMZP::docker)
-alias drm='docker rm $(docker ps -aq)'  # removes ALL containers (plugin's drm takes args)
-alias drmi='docker rmi $(docker images -qf dangling=true)'  # dangling only (plugin prunes all unused)
+alias dc-up='UID=$(id -u) GID=$(id -g) docker compose up'  # injects host UID/GID
+alias drm='docker rm $(docker ps -aq)'  # removes ALL containers
+alias drmi='docker rmi $(docker images -qf dangling=true)'  # dangling images only
 
 # =============================================================================
-# GIT (quick aliases - forgit plugin provides more)
+# GIT (quick aliases; forgit plugin provides powerful interactive ones)
 # =============================================================================
 alias gs='git status'
 alias gp='git pull'
@@ -61,7 +56,7 @@ alias gwip='git add -A && git commit -m "wip: $(date +%H:%M)"'
 alias gunwip='git log -n 1 --format=%s | grep -q "^wip" && git reset HEAD~1'
 
 # =============================================================================
-# TOOLS & UTILITIES
+# TOOLS & UTILITIES (command replacements and shortcuts)
 # =============================================================================
 alias bat='batcat --theme TwoDark'
 alias fd='fdfind'
@@ -88,7 +83,8 @@ alias free='free -h'
 if (( IS_WSL )); then
   alias open='explorer.exe'
   alias pbcopy='clip.exe'
-  alias pbpaste='powershell.exe Get-Clipboard | tr -d "\r"'
+  # Use sed instead of tr for more reliable carriage return removal
+  alias pbpaste='powershell.exe Get-Clipboard | sed "s/\r$//"'
   alias uuid="cat /proc/sys/kernel/random/uuid | tr -d '\n' | clip.exe"
 fi
 
@@ -108,10 +104,8 @@ alias cf='cargo fmt'
 alias clippy='cargo clippy -- -D warnings'
 
 # =============================================================================
-# GO
+# GO (Most aliases provided by OMZP::golang)
 # =============================================================================
-# alias got='go test ./...'   # use gota (OMZP::golang) — plugin's got is just 'go test'
-# alias gomod='go mod tidy'   # use gomt (OMZP::golang)
 alias gocover='go test -coverprofile=/tmp/cover.out ./... && go tool cover -html=/tmp/cover.out'
 
 # =============================================================================
