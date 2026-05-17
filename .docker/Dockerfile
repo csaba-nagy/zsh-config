@@ -1,14 +1,26 @@
 # syntax=docker/dockerfile:1
 # Build args: defaults from versions.env (update there for easier maintenance)
-# Usage: docker build -t zsh-config-test .
-#   or: docker build -t zsh-config-test \
-#         --build-arg DELTA_VER=0.20.0 \
-#         --build-arg GO_VER=go1.27.0 .
+#
+# ⚠️  IMPORTANT: These ARG defaults MUST match .docker/versions.env
+#     For consistent builds, use the Makefile:
+#       make docker-run          # Recommended
+#     Or pass versions explicitly:
+#       docker build -f .docker/Dockerfile \
+#         --build-arg DELTA_VER=0.19.2 \
+#         --build-arg DUST_VER=v1.2.4 \
+#         ... (see Makefile for full list)
+#
+# Manual builds without --build-arg will use defaults below.
+# Ensure defaults match versions.env when updating tool versions.
+#
+# Usage: make docker-run (uses versions from .docker/versions.env via Makefile)
+#   or: docker build -f .docker/Dockerfile -t zsh-config-test . (uses defaults below)
 FROM ubuntu:24.04
 
 # Use bash for all RUN commands (script uses bash array syntax)
 SHELL ["/bin/bash", "-c"]
 
+# ⚠️  Keep these in sync with .docker/versions.env
 ARG DELTA_VER=0.19.2      # bare, e.g. 0.19.2
 ARG DUST_VER=v1.2.4       # v-prefixed, e.g. v1.2.4
 ARG PROCS_VER=v0.14.11    # v-prefixed, e.g. v0.14.11

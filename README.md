@@ -1,256 +1,521 @@
-# zsh config
+# 🚀 zsh-config
 
-> [!SUCCESS]
-> **Latest improvements:** Node now accessible without manual intervention (fixed). `upgrade` function refactored: cleaner code, new `--only` flag for selective updates, `--dry-run` for safe testing, and `zsh-health` diagnostic tool. Network resilience improved — failures on one tool don't block others.
+> A fast, modular zsh configuration for productive terminal workflows.
 
-> [!NOTE]
-> This is an **opinionated** personal zsh configuration. It reflects specific tool choices, aliases, and workflows that suit one developer's daily use. Fork and adapt it rather than using it as-is.
-
-Fast, modular zsh configuration using [Zinit](https://github.com/zdharma-continuum/zinit) turbo mode and cached eval outputs.
-
-**Target startup time:** < 100ms (`time zsh -i -c exit`)
-
-**Latest release:** [v1.1.0](https://github.com/nandordudas/zsh-config/releases/tag/v1.1.0) — Hybrid prebuilt binaries, smart cargo updates, documentation improvements
-
-## Structure
-
-```
-~/.zshenv                    # XDG base dirs + ZDOTDIR only (not in repo)
-~/.config/zsh/
-├── .zprofile                # Login shell: PATH, env vars, dir creation
-├── .zshrc                   # Orchestrator — sources modules in order
-├── modules/
-│   ├── options.zsh          # Shell setopt declarations
-│   ├── zinit.zsh            # Zinit bootstrap + all plugins (turbo mode)
-│   ├── completions.zsh      # Completion zstyle config
-│   ├── keybindings.zsh      # All key bindings (manual, no plugin)
-│   ├── aliases.zsh          # Aliases
-│   ├── functions.zsh        # Custom functions
-│   ├── tools.zsh            # External tool init with eval caching
-│   └── local.zsh            # Machine-local overrides (gitignored)
-└── tmux/
-    └── tmux.conf            # tmux config (symlink to ~/.config/tmux/tmux.conf)
-```
+**Target startup time:** < 100ms | **Current version:** v1.1.0
 
 ---
 
-## Quick Start (experienced users only)
+## What is this?
 
-If you have Rust, Go, Starship, fzf, direnv, and GitHub CLI installed:
+A **fully-featured zsh configuration** built with:
+- [Zinit](https://github.com/zdharma-continuum/zinit) plugin manager (turbo mode for speed)
+- 50+ curated plugins and tools (fuzzy search, git integration, syntax highlighting)
+- SSH commit signing (no GPG required)
+- Auto-updating tools and diagnostics
+- XDG base directory spec compliance
+
+**Perfect for:** Developers, DevOps engineers, and anyone who lives in the terminal.
+
+**Not for you if:** You want a minimal config. This is **opinionated** — fork it and adapt to your needs.
+
+---
+
+## Quick Start (5 minutes)
+
+For experienced users with Rust, Go, and Node already installed:
 
 ```bash
+# 1. Clone the config
 npx tiged nandordudas/zsh-config ~/.config/zsh --disable-cache
-# Then follow Installation steps 2-5 only
-# Node is auto-installed during first shell start (no manual install needed)
+
+# 2. Create ~/.zshenv (required)
+cat > ~/.zshenv << 'EOF'
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
+EOF
+
+# 3. Setup machine-local config (empty)
+touch ~/.config/zsh/modules/local.zsh
+
+# 4. Link tmux config
+mkdir -p ~/.config/tmux
+ln -sf ~/.config/zsh/tmux/tmux.conf ~/.config/tmux/tmux.conf
+
+# 5. Open new terminal and verify
+zsh-health
 ```
+
+**Next steps:**
+- Run `zsh-health` to diagnose issues
+- Review `modules/local.zsh` for customization
+- See "[Configuration](#configuration)" section below
+
+---
+
+## Features
+
+| Feature | Benefit |
+|---------|---------|
+| **Fast startup** | Zinit turbo mode + cached tool initialization (~50-100ms) |
+| **Smart plugin loading** | Plugins load on-demand, not at startup |
+| **Git integration** | SSH commit signing, per-host identities, fast diffs |
+| **Tool auto-updates** | `upgrade` function checks for newer versions |
+| **Fuzzy finder** | fzf for file/history search, git operations |
+| **Language support** | Auto-install Node.js (fnm), Go (g), Rust (cargo) |
+| **Diagnostics** | `zsh-health` checks all critical tools and config |
+| **XDG compliant** | All config in `~/.config`, cache in `~/.cache` |
 
 ---
 
 ## Prerequisites
 
-Install all tools before cloning. Steps must be followed in this order — each section depends on the previous.
+You'll install these tools before cloning the config. Choose your system:
 
-### 1. System packages
+<details>
+<summary><strong>Ubuntu/Debian (recommended)</strong></summary>
 
 ```bash
+# 1. System packages
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y \
-  zsh \
-  bat fd-find ripgrep \
-  duf zoxide \
-  exiftool \
-  tmux \
-  unrar p7zip-full
+sudo apt install -y zsh bat fd-find ripgrep duf zoxide exiftool tmux unrar p7zip-full
+
+# 2. Change default shell to zsh
 chsh -s $(command -v zsh)
-```
+# Log out and log in for shell change to take effect
 
-| Package | Used as | Notes |
-|---|---|---|
-| `bat` | `bat` (alias `cat`) | Installed as `batcat` on Debian/Ubuntu |
-| `fd-find` | `fd` (alias `find`) | Installed as `fdfind` on Debian/Ubuntu |
-| `ripgrep` | background fzf search | — |
-| `duf` | `df` replacement | — |
-| `zoxide` | `z` (smart `cd`) | — |
-| `exiftool` | file metadata viewer | — |
-| `unrar`, `p7zip-full` | `extract()` function | Archive format support |
-
-### 2. Rust + cargo tools
-
-Install Rust first — subsequent steps depend on it.
-
-```bash
+# 3. Rust + cargo tools
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source "$HOME/.cargo/env"
-```
-
-Install cargo-based tools (including `fnm`, the Node version manager):
-
-```bash
 cargo install du-dust procs cargo-update eza git-delta fnm
-```
 
-| Binary | Used as | Notes |
-|---|---|---|
-| `eza` | `ls`/`ll`/`la`/`lt` | Modern ls with icons and git status |
-| `du-dust` | `du` replacement | Visual disk usage |
-| `procs` | `pss` alias | Modern `ps` |
-| `git-delta` | git pager | Syntax-highlighted diffs |
-| `cargo-update` | `cargo install-update` | Updates all cargo-installed binaries |
-| `fnm` | `fnm` / `nvm` alias | Node.js version manager |
-
-### 3. Node.js via fnm
-
-```bash
+# 4. Node.js via fnm
 fnm install --lts && fnm default lts-latest && fnm use lts-latest
 npm install --global npm@latest pnpm@latest @antfu/{ni,nip} eslint taze npkill
-```
 
-### 4. Go version manager (g)
-
-```bash
-curl -sSL https://raw.githubusercontent.com/stefanmaric/g/master/bin/install \
-  | GOPATH="$HOME/go" GOROOT="$HOME/.go" bash
+# 5. Go version manager
+curl -sSL https://raw.githubusercontent.com/stefanmaric/g/master/bin/install | \
+  GOPATH="$HOME/go" GOROOT="$HOME/.go" bash
 g install latest && g use latest
-```
 
-`GOROOT` (`~/.go`) holds the Go toolchain. `GOPATH` (`~/go`) holds installed binaries and the `g` manager itself.
-
-### 5. Starship prompt
-
-```bash
+# 6. Starship prompt
 curl -sS https://starship.rs/install.sh | sh
-```
 
-### 6. direnv — per-project environment variables
-
-```bash
+# 7. direnv (environment variables per-directory)
 curl -sfL https://direnv.net/install.sh | bash
-```
 
-Automatically loads and unloads `.envrc` files when entering or leaving a directory.
-
-### 7. fzf — fuzzy finder
-
-Install from git to get the latest version (apt ships an outdated one):
-
-```bash
+# 8. fzf (fuzzy finder)
 [[ -d ~/.fzf ]] || git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ~/.fzf/install --key-bindings --completion --no-update-rc
-```
 
-> `--no-update-rc` skips modifying `.bashrc`/`.zshrc` — the config handles
-> shell integration itself via `modules/tools.zsh`.
-
-### 8. fastfetch — system info
-
-```bash
+# 9. fastfetch (system info)
 sudo add-apt-repository ppa:zhangsongcui3371/fastfetch
 sudo apt update && sudo apt install -y fastfetch
-```
 
-### 9. GitHub CLI (gh)
+# 10. GitHub CLI (required for git operations)
+sudo mkdir -p -m 755 /etc/apt/keyrings
+wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+  sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
+sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | \
+  sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
+sudo apt update && sudo apt install -y gh
 
-Used as a credential helper for HTTPS git operations and for adding SSH keys to GitHub.
-
-> [!WARNING]
-> **WSL users:** `gh auth login` opens a browser for OAuth. If WSLg is not enabled or no browser is available, the interactive flow will hang or fail. Use the token-based alternative instead:
-> ```bash
-> gh auth login --with-token <<< "YOUR_GITHUB_TOKEN"
-> ```
-> Generate a token at GitHub → Settings → Developer settings → Personal access tokens.
-
-```bash
-(type -p wget >/dev/null || sudo apt install wget -y) \
-  && sudo mkdir -p -m 755 /etc/apt/keyrings \
-  && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-     | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null \
-  && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-     | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null \
-  && sudo apt update && sudo apt install gh -y
+# 11. Authenticate with GitHub
 gh auth login
 ```
 
-### 10. Docker (optional)
+</details>
+
+<details>
+<summary><strong>macOS (with Homebrew)</strong></summary>
 
 ```bash
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER && newgrp docker
+# 1. Install Homebrew if you haven't
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 2. System packages
+brew install zsh bat fd ripgrep duf zoxide exiftool tmux unrar p7zip
+
+# 3. Change default shell
+chsh -s $(which zsh)
+
+# 4. Rust + cargo tools
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
+cargo install du-dust procs cargo-update eza git-delta fnm
+
+# 5. Node.js via fnm
+fnm install --lts && fnm default lts-latest && fnm use lts-latest
+npm install --global npm@latest pnpm@latest @antfu/{ni,nip} eslint taze npkill
+
+# 6. Go
+brew install go
+
+# 7. Starship
+brew install starship
+
+# 8. direnv
+brew install direnv
+
+# 9. fzf
+brew install fzf
+
+# 10. fastfetch
+brew install fastfetch
+
+# 11. GitHub CLI
+brew install gh
+gh auth login
 ```
 
-### 11. Claude CLI (optional)
+</details>
 
-Used by the `upgrade()` function to check for updates.
+<details>
+<summary><strong>Other systems (Fedora, Arch, etc.)</strong></summary>
 
-```bash
-curl -fsSL https://claude.ai/install.sh | bash
-```
+Adjust package names for your distro. Core requirements:
+- `zsh`, `git`, `tmux`, `ripgrep` (system packages)
+- `rustup` → `cargo` tools (eza, du-dust, procs, fnm)
+- `go` or Go version manager
+- `starship`, `direnv`, `fzf`, `fastfetch` (install via package manager or from source)
+- `gh` (GitHub CLI)
+
+See [Starship docs](https://starship.rs/guide/#🚀-installation) for distribution-specific instructions.
+
+</details>
+
+**After prerequisites:**
+- Verify all tools are in PATH: `zsh-health` (or wait until after installing the config)
+- Close and reopen your terminal
 
 ---
 
-## Installation
+## Installation (Step-by-Step)
 
-### 1. Clone the repo
+### Step 1: Clone the config
 
 ```bash
 npx tiged nandordudas/zsh-config ~/.config/zsh --disable-cache
 ```
 
-> If `~/.config/zsh` already exists, back it up first:
-> ```bash
-> mv ~/.config/zsh ~/.config/zsh.bak
-> ```
+Or if `~/.config/zsh` exists:
+```bash
+mv ~/.config/zsh ~/.config/zsh.bak  # backup first
+npx tiged nandordudas/zsh-config ~/.config/zsh --disable-cache
+```
 
-### 2. Create `~/.zshenv`
+### Step 2: Create `~/.zshenv` (required)
 
-This file is **not included in the repo** because it must live at `$HOME/.zshenv`.
-Create it manually:
+This file must be in your home directory (not in the repo). It sets up the XDG directory structure:
 
 ```bash
 cat > ~/.zshenv << 'EOF'
 # ~/.zshenv
-# Sourced for ALL zsh invocations (interactive, non-interactive, scripts, git hooks).
-# Rule: only what every zsh process needs to locate the real config.
+# Sourced for every zsh invocation (login shells, interactive shells, scripts, git hooks).
+# Only put things here that every zsh process needs — usually just env vars for directory locations.
 
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 
-# Redirect zsh's dotfile search from $HOME to ~/.config/zsh
+# Tell zsh to look for dotfiles in ~/.config/zsh instead of ~
 export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
 EOF
 ```
 
-### 3. Create `modules/local.zsh`
+### Step 3: Create machine-local config
 
-This file is gitignored and holds machine-specific overrides:
+This file holds per-machine settings (API keys, usernames, custom aliases):
 
 ```bash
 touch ~/.config/zsh/modules/local.zsh
 ```
 
-### 4. Link the tmux config
+Example content (see "[Configuration](#configuration)" for more):
+```bash
+# ~/.config/zsh/modules/local.zsh
+export GITHUB_USER="yourname"
+export BITBUCKET_USER="yourname"
+
+# Add machine-specific aliases or functions here
+```
+
+### Step 4: Link tmux config
 
 ```bash
 mkdir -p ~/.config/tmux
 ln -sf ~/.config/zsh/tmux/tmux.conf ~/.config/tmux/tmux.conf
 ```
 
-### 5. Open a new terminal
+### Step 5: Open new terminal
 
-On first launch Zinit auto-installs all plugins. Subsequent startups load from
-cache and are fast.
+**On first launch:**
+- Zinit downloads and installs all plugins (takes 1-2 minutes)
+- Eval caches are created in `~/.cache/zsh/`
+- Subsequent starts are fast (~50-100ms)
+
+**Verify it worked:**
+```bash
+zsh-health  # Shows all critical tools and their status
+time zsh -i -c exit  # Measure startup time
+```
 
 ---
 
-## Git configuration (optional)
+## Configuration
 
-For full SSH commit signing and per-host git identities, run the factory script below. Skip this section if you want a minimal setup.
+### Edit machine-local settings
 
-### Apply to a new machine
+File: `~/.config/zsh/modules/local.zsh` (gitignored)
 
 ```bash
+# GitHub and BitBucket usernames (for per-repo git identities)
+export GITHUB_USER="your-github-username"
+export BITBUCKET_USER="your-bitbucket-username"
+
+# Custom aliases
+alias myproject="cd ~/projects/myproject"
+
+# Custom functions
+my-build() {
+  echo "Building..." && make build
+}
+
+# Override default behavior
+# (Most of the config is here; this file extends it)
+```
+
+This file is automatically sourced by `.zshrc` and is **not tracked by git** (safe for secrets).
+
+### Customize plugins
+
+File: `~/.config/zsh/modules/zinit.zsh`
+
+To add/remove plugins, edit the file and restart the shell. Most common customizations:
+- Change color theme (search `oh-my-posh` or `powerlevel10k`)
+- Add new plugins (see [awesome-zsh-plugins](https://github.com/unixorn/awesome-zsh-plugins))
+- Disable plugins you don't use (improves startup time)
+
+### Customize keybindings
+
+File: `~/.config/zsh/modules/keybindings.zsh`
+
+Keybindings are manually defined (not from plugins) for consistency. Edit to customize `Ctrl+R` history, `Ctrl+T` file finder, etc.
+
+### Customize aliases
+
+File: `~/.config/zsh/modules/aliases.zsh`
+
+Common aliases:
+- `ll` → `eza -la` (detailed file listing)
+- `cat` → `bat` (syntax-highlighted cat)
+- `find` → `fd` (faster, intuitive find)
+- `du` → `dust` (visual disk usage)
+
+---
+
+## Common Tasks
+
+### Update tools
+
+Periodically check for updates:
+```bash
+upgrade              # Checks all tools, shows what will be updated
+upgrade --dry-run    # See what would update without making changes
+upgrade --only node  # Update only Node.js
+```
+
+Supported tools: `apt`, `rust`, `cargo`, `node`, `go`, `gh`, `zsh`, `fzf`
+
+### Check system health
+
+```bash
+zsh-health
+```
+
+Verifies:
+- All critical tools installed
+- PATH configured correctly
+- Shell setup correct
+- Issues and how to fix them
+
+### Clear caches
+
+If a tool acts weird after an update:
+```bash
+zsh-cache-clear      # Removes eval caches
+exec zsh -l          # Restart shell (regenerates caches)
+```
+
+> **Don't delete** `~/.local/share/zinit` — it contains compiled plugins. Deleting it forces a re-download on next start.
+
+### Interact with git
+
+```bash
+glo                  # Git log picker (interactive, with fzf)
+gfs                  # Git file search
+gbb                  # Git branch picker
+```
+
+For more git aliases, see `modules/aliases.zsh` or run `git alias`.
+
+### Use fzf
+
+Built-in fuzzy finding:
+- `Ctrl+R` → Search command history
+- `Ctrl+T` → Find files/directories
+- `Alt+C` → Smart directory navigation
+
+---
+
+## Verify Installation
+
+Run checks after a fresh install or after pulling updates:
+
+```bash
+# Quick health check (recommended first step)
+zsh-health
+
+# Detailed checks
+time zsh -i -c exit         # Startup time (expected: ~50-100ms)
+echo $HISTFILE              # Expected: ~/.local/share/zsh/history
+node --version              # Expected: v20+ (auto-installed)
+fzf --version               # Expected: 0.68+
+ls ~/.cache/zsh/            # Expected: starship.zsh, zoxide.zsh, fnm.zsh, direnv.zsh
+upgrade --dry-run           # See what would update
+```
+
+All checks should pass. If not, see "[Troubleshooting](#troubleshooting)".
+
+---
+
+## Testing
+
+### Run tests locally (no install needed)
+
+Validate the config without modifying your system:
+
+```bash
+bash ~/.config/zsh/scripts/test.sh
+```
+
+Checks:
+- Bash/zsh syntax
+- Required files exist
+- No personal data in repo
+- `git-setup.sh` argument parsing
+- Full dry-run in isolated environment
+
+### Full install test in Docker
+
+Test on a clean Ubuntu 24.04:
+
+```bash
+# Recommended (reads versions from .docker/versions.env)
+make docker-run
+
+# Or manually
+docker build -f .docker/Dockerfile -t zsh-config-test .
+docker run -it --rm zsh-config-test
+```
+
+Takes 5-10 minutes. Reuses cached layers on subsequent builds.
+
+---
+
+## Troubleshooting
+
+### "zsh-health: command not found"
+
+Run `zsh-health` after opening a new terminal. If still missing, the config didn't load:
+
+```bash
+# Check ZDOTDIR is set
+echo $ZDOTDIR    # Expected: /home/yourname/.config/zsh
+
+# Check .zshenv exists
+ls -la ~/.zshenv
+
+# Check ~/.zshenv sets ZDOTDIR
+cat ~/.zshenv | grep ZDOTDIR
+
+# Manually source and try
+source ~/.zshenv
+exec zsh
+zsh-health
+```
+
+### "Node: command not found" after fresh install
+
+Node is auto-installed on first shell start. If missing:
+
+```bash
+fnm install --lts
+fnm default lts-latest
+exec zsh
+node --version
+```
+
+### Slow shell startup
+
+Profile it:
+
+```bash
+time zsh -i -c exit              # Total time
+zinit report                     # Slow plugins
+zsh -x 2>&1 | head -50          # First steps
+```
+
+Most plugins load on-demand (turbo mode), so slow startup is rare. If a plugin is slow, comment it out in `modules/zinit.zsh`.
+
+### "Command not found" for tools installed via cargo/fnm
+
+PATH not updated. Fix:
+
+```bash
+# Check PATH includes tool locations
+echo $PATH | grep -E "cargo|fnm|go"
+
+# If missing, restart your shell
+exec zsh -l
+
+# Or manually source
+source ~/.zshenv
+source ~/.zprofile
+```
+
+### Upgrade fails or is slow
+
+Test in dry-run mode:
+
+```bash
+upgrade --dry-run --only node  # See what will run
+upgrade --only apt,rust        # Skip slow checks
+```
+
+Network issues? One tool failing doesn't block others (jobs are resilient).
+
+### Git config conflicts
+
+If git uses wrong identity on some repos:
+
+1. Check which identity is active: `git config user.name`
+2. Verify `includeIf` paths in `~/.config/git/config` match your repo layout
+3. Or run per-repo override: `git config user.name "Your Name"`
+
+---
+
+## Advanced: Git Setup (Optional)
+
+For automatic per-repo identities and SSH commit signing:
+
+```bash
+# Run the factory script
 ~/.config/zsh/scripts/git-setup.sh
 # or with explicit values (skips prompts):
 ~/.config/zsh/scripts/git-setup.sh \
@@ -258,44 +523,12 @@ For full SSH commit signing and per-host git identities, run the factory script 
   --email "your@email.com"
 ```
 
-The script is idempotent — safe to re-run after updates.
+Creates:
+- `~/.config/git/config` — Main git config
+- `~/.ssh/id_ed25519` — SSH signing key
+- Per-repo identities for GitHub, Bitbucket
 
-### What it creates
-
-```
-~/.config/git/
-├── config                  # Main config (all settings, aliases, delta, signing)
-├── ignore                  # Global gitignore (.DS_Store, node_modules, .env, etc.)
-├── allowed_signers         # Local SSH signature verification (email + pubkey)
-├── github/.gitconfig       # Per-repo identity for ~/code/github/**
-└── bitbucket/.gitconfig    # Per-repo identity for ~/code/bitbucket/**
-```
-
-### SSH commit signing
-
-Since Git 2.34, SSH keys can sign commits and tags — no GPG keyring needed. The same key used for GitHub authentication also signs commits.
-
-**How it works:**
-
-```gitconfig
-[gpg]
-    format = ssh
-[gpg "ssh"]
-    allowedSignersFile = ~/.config/git/allowed_signers
-[user]
-    signingKey = ~/.ssh/id_ed25519.pub
-[commit]
-    gpgSign = true
-[tag]
-    gpgSign = true
-```
-
-The `allowed_signers` file maps email addresses to public keys for local verification:
-```
-your@email.com ssh-ed25519 AAAA...
-```
-
-**After running the script**, register the SSH key on GitHub to get the "Verified" badge:
+After running, register SSH key on GitHub:
 
 ```bash
 gh auth refresh -s admin:public_key,admin:ssh_signing_key
@@ -303,191 +536,11 @@ gh ssh-key add ~/.ssh/id_ed25519.pub --title "$(hostname)" --type authentication
 gh ssh-key add ~/.ssh/id_ed25519.pub --title "$(hostname)" --type signing
 ```
 
-**Verify a signed commit:**
-
+Verify:
 ```bash
+git commit --allow-empty -S -m "test: ssh signing"
 git log --show-signature -1
-# Good "git" signature for your@email.com with ED25519 key SHA256:...
-```
-
-### Shell integration
-
-The `.zprofile` sets `GIT_CONFIG_GLOBAL` so git uses the XDG path:
-
-```bash
-export GIT_CONFIG_GLOBAL="$HOME/.config/git/config"
-```
-
----
-
-## Machine-local configuration
-
-Settings that vary per machine (usernames, API keys, tool preferences) belong in `modules/local.zsh`, which is **gitignored** and sourced automatically by `.zshrc`.
-
-**Example: GitHub and BitBucket usernames**
-
-Add to `~/.config/zsh/modules/local.zsh`:
-
-```bash
-# GitHub and BitBucket usernames (for git config includes)
-export GITHUB_USER="nandordudas"
-export BITBUCKET_USER="nandordudas"
-```
-
-This keeps `.zprofile` clean and shareable while allowing per-machine customization.
-
----
-
-## Post-install verification
-
-> [!TIP]
-> Run these checks after a fresh install or after pulling updates to confirm everything is wired up correctly.
-
-**Quick health check:**
-```bash
-zsh-health  # Single command verifies all critical tools + PATH + config
-```
-
-**Detailed checks:**
-```bash
-# Startup time
-time zsh -i -c exit    # Expected: ~50-100ms (user time)
-
-# Check HISTFILE is correct
-echo $HISTFILE         # Expected: ~/.local/share/zsh/history
-
-# Node immediately available (no manual upgrade needed)
-node --version         # Expected: v24+
-
-# Check fzf version (requires >= 0.49.0 for forgit)
-fzf --version          # Expected: 0.68.x from ~/.fzf/bin
-
-# Check eval caches were created
-ls ~/.cache/zsh/       # Expected: starship.zsh  zoxide.zsh  fnm.zsh  direnv.zsh
-
-# Test forgit (git log picker)
-glo                    # interactive git log with fzf
-
-# Test upgrade (dry-run, no changes)
-upgrade --dry-run      # Shows which tools would be updated
-```
-
-## Testing
-
-### Unit tests (no install required)
-
-Validate the repo without touching your real dotfiles:
-
-```bash
-bash ~/.config/zsh/scripts/test.sh
-```
-
-Checks: bash/zsh syntax, required files, no personal data leaks,
-`git-setup.sh` argument parsing, and a full dry-run in an isolated temp home.
-
-### Full install test in Docker
-
-> [!IMPORTANT]
-> The Docker build downloads all tools from the internet. It takes several minutes on first run. Subsequent builds reuse cached layers.
-
-Test the complete install on a clean Ubuntu 24.04 environment:
-
-```bash
-# Recommended: use the Makefile (reads versions from .docker/versions.env)
-make docker-run
-
-# Or manually (from the repo root)
-docker build -f .docker/Dockerfile -t zsh-config-test .
-docker run -it --rm zsh-config-test
-```
-
-The Dockerfile (`.docker/Dockerfile`) runs all prerequisite installs in order, copies the config,
-and executes `test.sh` as part of the build — a failed test aborts the build.
-
-> **Note:** `gh auth login` and `chsh` are skipped in the container (they require
-> interactive authentication and PAM respectively). Docker-in-Docker is also
-> excluded — run Docker setup steps on the host.
-
----
-
-## Cache management
-
-> [!TIP]
-> If a tool behaves unexpectedly after an upgrade, clear the eval caches:
-
-```bash
-zsh-cache-clear  # removes ~/.cache/zsh/{starship,zoxide,fnm,direnv}.zsh
-exec zsh -l      # regenerates caches on next start
-```
-
-> [!CAUTION]
-> Do not delete `~/.local/share/zinit` unless you intend to reinstall all plugins from scratch. Zinit stores compiled plugin snapshots there; removing it triggers a full re-download on next shell start.
-
----
-
-## Diagnostics & Troubleshooting
-
-### Tools not available after fresh install
-
-Run the diagnostic:
-```bash
-zsh-health
-```
-
-This checks:
-- All core tools installed (git, zsh, fzf, eza, bat, fd)
-- Language tools present (Go, Rust, Node, Python)
-- PATH configuration correct
-- Shell setup (ZDOTDIR, Zinit, Zoxide)
-
-Reports missing dependencies and fixable issues.
-
-### Node not available immediately after install
-
-Node is now auto-installed during shell initialization if FNM has no default. Just start a new shell — Node will be available without running `upgrade` manually.
-
-If still missing:
-```bash
-fnm install --lts
-fnm default lts-latest
-exec zsh
-```
-
-### Slow shell startup
-
-Profile shell startup:
-```bash
-time zsh -i -c exit  # measure total time
-zsh -i -c 'set -x; source ~/.zshrc' 2>&1 | grep '^+'  # see each step
-```
-
-If plugins are slow:
-```bash
-zinit report  # show load times per plugin
-```
-
-Most plugins load in turbo mode (deferred until first use), so slow startup is rare.
-
-### Upgrade failing silently
-
-Test with dry-run to see what would run:
-```bash
-upgrade --dry-run
-upgrade --dry-run --only node  # check specific tool
-```
-
-If network is slow/unreliable:
-```bash
-upgrade --only apt,rust  # skip slow checks (go/node/claude)
-```
-
-Jobs are resilient to timeouts — one tool failing doesn't block others.
-
-### Terminal glitches after running upgrade
-
-If you see stray `[N] + exit` messages, they're harmless (cleared jobs). If keybindings break:
-```bash
-zsh-cache-clear && exec zsh  # reload with fresh caches
+# Output: Good "git" signature for your@email.com with ED25519 key
 ```
 
 ---
@@ -497,14 +550,98 @@ zsh-cache-clear && exec zsh  # reload with fresh caches
 ### Pull latest changes
 
 ```bash
-cd ~/.config/zsh && git pull origin main
-zsh-cache-clear  # clear eval caches
-exec zsh         # reload with new config
+cd ~/.config/zsh
+git pull origin main
+zsh-cache-clear      # Clear old caches
+exec zsh             # Reload with new config
 ```
 
-### Check what changed
+### See what changed
 
 ```bash
-cd ~/.config/zsh && git log --oneline -n 5
-git diff HEAD~3..HEAD -- modules/  # last 3 commits
+git log --oneline -n 10              # Last 10 commits
+git diff HEAD~5..HEAD -- modules/   # Last 5 commits
+git show HEAD                        # Latest commit details
 ```
+
+### Rollback to previous version
+
+```bash
+git log --oneline             # Find a commit hash
+git checkout HASH             # Go back to that version
+exec zsh                      # Reload
+```
+
+---
+
+## Structure
+
+```
+~/.zshenv                    # Home, required (you create this)
+~/.config/zsh/
+├── .zprofile                # Login shell: PATH, env vars
+├── .zshrc                    # Main orchestrator
+├── modules/
+│   ├── options.zsh           # Shell options (setopt)
+│   ├── zinit.zsh             # Plugin manager + all plugins
+│   ├── completions.zsh       # Completion rules
+│   ├── keybindings.zsh       # Key mappings
+│   ├── aliases.zsh           # Command aliases
+│   ├── functions.zsh         # Custom functions
+│   ├── tools.zsh             # External tool setup + caching
+│   └── local.zsh             # Machine-local (gitignored)
+├── tmux/
+│   └── tmux.conf             # tmux config
+└── scripts/
+    ├── git-setup.sh          # Git configuration factory
+    └── test.sh               # Test suite
+```
+
+---
+
+## FAQ
+
+**Q: Will this config work on my machine?**
+
+A: Tested on Ubuntu 22.04+ and macOS 12+. Requires Bash 4+, Zsh 5.4+. WSL works (see WSL notes in prerequisites).
+
+**Q: Can I fork this and customize it?**
+
+A: Yes! That's the recommendation. It's opinionated; customize `modules/local.zsh` for your workflow.
+
+**Q: Does this include a prompt theme?**
+
+A: Yes, Starship. Customize in `~/.config/starship.toml`.
+
+**Q: Can I use this with other plugin managers (Oh My Zsh, Prezto)?**
+
+A: No, it's specifically built around Zinit. Fork and adapt if you prefer another manager.
+
+**Q: How do I report bugs or suggest features?**
+
+A: Open an issue on [GitHub](https://github.com/nandordudas/zsh-config/issues).
+
+**Q: Is this security-tested?**
+
+A: It's a personal config, not a security-hardened system. Review before using in sensitive environments.
+
+---
+
+## Resources
+
+- [Zsh Documentation](https://zsh.sourceforge.io/Doc/)
+- [Zinit Plugin Manager](https://github.com/zdharma-continuum/zinit)
+- [Awesome Zsh Plugins](https://github.com/unixorn/awesome-zsh-plugins)
+- [Starship Prompt](https://starship.rs/)
+- [fzf — Fuzzy Finder](https://github.com/junegunn/fzf)
+- [direnv](https://direnv.net/)
+
+---
+
+## License
+
+MIT — Use, modify, and share freely.
+
+---
+
+**Questions?** Open an [issue](https://github.com/nandordudas/zsh-config/issues) on GitHub.
