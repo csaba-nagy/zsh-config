@@ -257,32 +257,17 @@ _cargo_smart_update() {
   fi
 }
 
-# Comprehensive system upgrade function — parallel execution
+# Comprehensive system upgrade — parallel execution with selective tool support
+# Usage: upgrade [--only tool1,tool2,...]
 upgrade() {
-  # Suppress [N] PID job-start and job-done notifications — they break the
-  # in-place ANSI display by adding unexpected lines between redraws.
-  # LOCAL_OPTIONS ensures the change is reverted automatically on return.
   setopt LOCAL_OPTIONS
   unsetopt MONITOR NOTIFY
 
+  local only_tools
+  [[ "$1" == "--only" ]] && only_tools="$2" && shift 2
+
   local tmpdir
   tmpdir=$(mktemp -d)
-
-  # Verify sudo access before backgrounding — apt job needs it.
-  # Use -n (non-interactive) so it works without a TTY when NOPASSWD is set.
-  if ! sudo -n true 2>/dev/null; then
-    printf "Error: sudo access required for system upgrades\n" >&2
-    rm -rf "$tmpdir"
-    return 1
-  fi
-
-  # Track which jobs were launched (in display order)
-  local -a names=()
-  local -a pids=()
-
-  # Kill background jobs and clean up on Ctrl+C or SIGTERM.
-  # kill -- -$pid sends SIGTERM to the entire process group so children
-  # of each subshell (e.g. apt, claude) are also terminated.
   trap '
     for _pid in $pids; do kill -- -$_pid 2>/dev/null; done
     rm -rf "$tmpdir"
@@ -290,140 +275,92 @@ upgrade() {
     trap - INT TERM
   ' INT TERM
 
+  if ! sudo -n true 2>/dev/null; then
+    printf "Error: sudo access required\n" >&2
+    rm -rf "$tmpdir"
+    return 1
+  fi
+
+  local -a names=() pids=()
   local total_start=$EPOCHSECONDS
 
-  # Bookend helpers — called inside each { ... } & block to record
-  # start time, then mark done/failed + end time after the body exits.
-  # $tmpdir is in scope for all subshells forked from upgrade().
+  # Job control helpers
   _job_start() { printf 'running' >"$tmpdir/$1.status"; printf '%s' $EPOCHSECONDS >"$tmpdir/$1.start" }
   _job_end()   {
-    (( $2 == 0 )) \
-      && printf 'done'   >"$tmpdir/$1.status" \
-      || printf 'failed' >"$tmpdir/$1.status"
+    (( $2 == 0 )) && printf 'done' >"$tmpdir/$1.status" || printf 'failed' >"$tmpdir/$1.status"
     printf '%s' $EPOCHSECONDS >"$tmpdir/$1.end"
   }
+  _launch_job() {
+    local tool=$1 fn=$2
+    [[ -n "$only_tools" ]] && [[ ! "$only_tools" =~ (^|,)$tool(,|$) ]] && return
+    { _job_start $tool; ( set -e; $fn ); _job_end $tool $? } >"$tmpdir/$tool.log" 2>&1 &
+    pids+=($!) names+=($tool)
+  }
 
-  # --- apt ---
-  {
-    _job_start apt
-    ( set -e
-      sudo apt-get update -qq
-      sudo apt-get upgrade -y --autoremove --purge
-      sudo apt-get autoclean
-    ); _job_end apt $?
-  } >"$tmpdir/apt.log" 2>&1 &
-  pids+=($!)
-  names+=(apt)
+  # Per-tool upgrade functions
+  _upgrade_apt() {
+    sudo apt-get update -qq
+    sudo apt-get upgrade -y --autoremove --purge
+    sudo apt-get autoclean
+  }
+  _upgrade_zinit() {
+    (( ${+functions[zinit]} )) || return 0
+    local zinit_dir="${ZINIT[HOME_DIR]:-${HOME}/.local/share/zinit/zinit.git}"
+    git -C "$zinit_dir" fetch origin --quiet 2>/dev/null || true
+    local behind=$(git -C "$zinit_dir" rev-list HEAD..FETCH_HEAD --count 2>/dev/null || echo 0)
+    (( behind > 0 )) && zinit self-update --quiet || true
+    local stamp="${HOME}/.cache/zinit-plugins-updated"
+    if [[ ! -f "$stamp" ]] || (( EPOCHSECONDS - $(<"$stamp") > 86400 )); then
+      zinit update --all --quiet || true
+      printf '%s' $EPOCHSECONDS >"$stamp"
+    fi
+  }
+  _upgrade_rust() {
+    command -v rustup &>/dev/null && rustup update
+    command -v cargo  &>/dev/null && _cargo_smart_update
+  }
+  _upgrade_go() {
+    [[ ! -x "$HOME/go/bin/g" ]] && return 0
+    local local_go=$(go version 2>/dev/null | awk '{print $3}' | sed 's/go//')
+    local remote_go=$(curl -sf 'https://go.dev/VERSION?m=text' 2>/dev/null | head -1 | sed 's/go//')
+    [[ -n "$remote_go" && "$local_go" != "$remote_go" ]] && "$HOME/go/bin/g" install latest && "$HOME/go/bin/g" use latest
+  }
+  _upgrade_node() {
+    command -v fnm &>/dev/null || return 0
+    local lts=$(fnm list-remote --lts 2>/dev/null | tail -1 | awk '{print $1}')
+    local current=$(fnm current 2>/dev/null)
+    [[ "v${lts#v}" != "v${current#v}" ]] && fnm install --lts && fnm default lts-latest && fnm use lts-latest
+    npm outdated --global 2>/dev/null | grep -q . && npm install --global npm@latest pnpm@latest @antfu/ni eslint taze npkill
+  }
+  _upgrade_claude() {
+    command -v claude &>/dev/null || return 0
+    local current=$(claude --version 2>/dev/null | awk '{print $1}')
+    local latest=$(npm view @anthropic-ai/claude-code version 2>/dev/null)
+    [[ -n "$latest" && "$current" != "$latest" ]] && claude update
+  }
 
-  # --- zinit ---
-  if (( ${+functions[zinit]} )); then
-    {
-      _job_start zinit
-      ( set -e
-        local zinit_dir="${ZINIT[HOME_DIR]:-${HOME}/.local/share/zinit/zinit.git}"
-        git -C "$zinit_dir" fetch origin --quiet 2>/dev/null || true
-        local behind
-        behind=$(git -C "$zinit_dir" rev-list HEAD..FETCH_HEAD --count 2>/dev/null || echo 0)
-        behind=${behind:-0}
-        (( behind > 0 )) && zinit self-update --quiet || true
-        local stamp="${HOME}/.cache/zinit-plugins-updated"
-        if [[ ! -f "$stamp" ]] || (( EPOCHSECONDS - $(<"$stamp") > 86400 )); then
-          zinit update --all --quiet || true
-          printf '%s' $EPOCHSECONDS >"$stamp"
-        fi
-      ); _job_end zinit $?
-    } >"$tmpdir/zinit.log" 2>&1 &
-    pids+=($!)
-    names+=(zinit)
-  fi
+  # Launch jobs
+  _launch_job apt _upgrade_apt
+  _launch_job zinit _upgrade_zinit
+  _launch_job rust _upgrade_rust
+  _launch_job go _upgrade_go
+  _launch_job node _upgrade_node
+  _launch_job claude _upgrade_claude
 
-  # --- rust (rustup must precede cargo) ---
-  if command -v rustup &>/dev/null || command -v cargo &>/dev/null; then
-    {
-      _job_start rust
-      ( set -e
-        command -v rustup &>/dev/null && rustup update
-        command -v cargo  &>/dev/null && _cargo_smart_update
-      ); _job_end rust $?
-    } >"$tmpdir/rust.log" 2>&1 &
-    pids+=($!)
-    names+=(rust)
-  fi
+  [[ ${#names[@]} -eq 0 ]] && { printf "No tools to upgrade\n" >&2; rm -rf "$tmpdir"; return 0; }
 
-  # --- go ---
-  if command -v "$HOME/go/bin/g" &>/dev/null; then
-    {
-      _job_start go
-      ( set -e
-        local LOCAL_GO REMOTE_GO
-        LOCAL_GO=$(go version 2>/dev/null | awk '{print $3}' | sed 's/go//')
-        REMOTE_GO=$(curl -sf 'https://go.dev/VERSION?m=text' 2>/dev/null | head -1 | sed 's/go//')
-        if [[ -n "$REMOTE_GO" && "$LOCAL_GO" != "$REMOTE_GO" ]]; then
-          "$HOME/go/bin/g" install latest && "$HOME/go/bin/g" use latest
-        fi
-      ); _job_end go $?
-    } >"$tmpdir/go.log" 2>&1 &
-    pids+=($!)
-    names+=(go)
-  fi
-
-  # --- node (fnm must precede npm) ---
-  if command -v fnm &>/dev/null; then
-    {
-      _job_start node
-      ( set -e
-        local lts current
-        lts=$(fnm list-remote --lts 2>/dev/null | tail -1 | awk '{print $1}')
-        current=$(fnm current 2>/dev/null)
-        if [[ "v${lts#v}" != "v${current#v}" ]]; then
-          fnm install --lts && fnm default lts-latest && fnm use lts-latest
-        fi
-        if npm outdated --global 2>/dev/null | grep -q .; then
-          npm install --global npm@latest pnpm@latest @antfu/ni eslint taze npkill
-        fi
-      ); _job_end node $?
-    } >"$tmpdir/node.log" 2>&1 &
-    pids+=($!)
-    names+=(node)
-  fi
-
-  # --- claude ---
-  if command -v claude &>/dev/null; then
-    {
-      _job_start claude
-      ( set -e
-        local current latest
-        current=$(claude --version 2>/dev/null | awk '{print $1}')
-        latest=$(npm view @anthropic-ai/claude-code version 2>/dev/null)
-        if [[ -n "$latest" && "$current" != "$latest" ]]; then
-          claude update
-        fi
-      ); _job_end claude $?
-    } >"$tmpdir/claude.log" 2>&1 &
-    pids+=($!)
-    names+=(claude)
-  fi
-
-  # --- Display loop ---
-  # Spinner frames (braille dots); 1-indexed for zsh arrays.
+  # Spinner display loop
   local -a spinner=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
-  local spin_i=1
-  local n=${#names[@]}
-
-  # Print initial block
+  local spin_i=1 n=${#names[@]}
   for name in $names; do
     printf "  ${_COLOR_YELLOW}${spinner[1]}${_COLOR_RESET} [%-8s] starting...\n" "$name"
   done
-
-  # Cache rendered lines for completed jobs — skips re-reading their files each tick.
   typeset -A done_line
-
   local all_done=0 s start_t end_t elapsed now
   while (( ! all_done )); do
     sleep 0.15
     printf '\033[%dA' "$n"
-    all_done=1
-    now=$EPOCHSECONDS
+    all_done=1 now=$EPOCHSECONDS
     for name in $names; do
       if [[ -n ${done_line[$name]} ]]; then
         printf '%s\n' "${done_line[$name]}"
@@ -444,24 +381,18 @@ upgrade() {
         printf '%s\n' "${done_line[$name]}"
       else
         elapsed=$(( now - start_t ))
-        printf "\033[2K\r  ${_COLOR_YELLOW}%s${_COLOR_RESET} [%-8s] running  ${_COLOR_DIM}%3ds${_COLOR_RESET}\n" \
-          "${spinner[$spin_i]}" "$name" "$elapsed"
+        printf "\033[2K\r  ${_COLOR_YELLOW}%s${_COLOR_RESET} [%-8s] running  ${_COLOR_DIM}%3ds${_COLOR_RESET}\n" "${spinner[$spin_i]}" "$name" "$elapsed"
         all_done=0
       fi
     done
     (( spin_i = spin_i % ${#spinner} + 1 ))
   done
 
-  # Reap background jobs
-  for pid in $pids; do
-    wait "$pid" 2>/dev/null
-  done
-
-  local total_elapsed
-  total_elapsed=$(( EPOCHSECONDS - total_start ))
+  for pid in $pids; do wait "$pid" 2>/dev/null; done
+  local total_elapsed=$(( EPOCHSECONDS - total_start ))
   printf "\n${_COLOR_DIM}Finished in %ds${_COLOR_RESET}\n\n" "$total_elapsed"
 
-  # --- Print logs: failed jobs first (prominent), then successful ---
+  # Print logs: failed first, then successful
   local log has_failure=0
   for name in $names; do
     [[ $(<"$tmpdir/${name}.status") == 'failed' ]] || continue
@@ -475,22 +406,26 @@ upgrade() {
     [[ -n "$log" ]] && printf '=== %s ===\n%s\n\n' "$name" "$log"
   done
 
-  # --- Version summary ---
-  printf '  %-12s %s\n' 'OS:'     "$(lsb_release -ds 2>/dev/null)"
-  printf '  %-12s %s\n' 'Kernel:' "$(uname -r)"
-  printf '  %-12s %s\n' 'Go:'     "$(go version 2>/dev/null | awk '{print $3}' || echo 'not found')"
-  printf '  %-12s %s\n' 'Rust:'   "$(rustc --version 2>/dev/null | awk '{print $2}' || echo 'not found')"
-  printf '  %-12s %s\n' 'Cargo:'  "$(cargo --version 2>/dev/null | awk '{print $2}' || echo 'not found')"
-  printf '  %-12s %s\n' 'Node:'   "$(node --version 2>/dev/null || echo 'not found')"
-  printf '  %-12s %s\n' 'npm:'    "$(npm --version 2>/dev/null || echo 'not found')"
-  printf '  %-12s %s\n' 'pnpm:'   "$(pnpm --version 2>/dev/null || echo 'not found')"
-  printf '  %-12s %s\n' 'Claude:' "$(claude --version 2>/dev/null || echo 'not found')"
-  printf '  %-12s %s\n' 'Docker:' "$(docker --version 2>/dev/null | awk '{print $3}' | tr -d ',' || echo 'not found')"
-  printf '  %-12s %s\n' 'Git:'    "$(git --version 2>/dev/null | awk '{print $3}' || echo 'not found')"
+  # Version summary — data-driven
+  local _ver() {
+    local label=$1; shift
+    printf '  %-12s %s\n' "$label" "$("$@" 2>/dev/null || echo 'not found')"
+  }
+  _ver 'OS:'     lsb_release -ds
+  _ver 'Kernel:' uname -r
+  _ver 'Go:'     sh -c 'go version 2>/dev/null | awk "{print \$3}"'
+  _ver 'Rust:'   rustc --version | awk '{print $2}'
+  _ver 'Cargo:'  cargo --version | awk '{print $2}'
+  _ver 'Node:'   node --version
+  _ver 'npm:'    npm --version
+  _ver 'pnpm:'   pnpm --version
+  _ver 'Claude:' claude --version | awk '{print $1}'
+  _ver 'Docker:' docker --version | awk '{print $3}' | tr -d ','
+  _ver 'Git:'    git --version | awk '{print $3}'
   printf '\n'
 
   trap - INT TERM
-  unfunction _job_start _job_end
+  unfunction _job_start _job_end _launch_job _upgrade_{apt,zinit,rust,go,node,claude} _ver
   rm -rf "$tmpdir"
 
   if (( has_failure )); then
