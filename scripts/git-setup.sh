@@ -145,19 +145,41 @@ EOF
 # Write template first (literal, no shell expansion), then inject personal values.
 # =============================================================================
 cat > "$GIT_DIR/config" << 'CONFIG_EOF'
+# ═══════════════════════════════════════════════════════════════════════════════
+# GIT CONFIGURATION — WSL vs macOS M5 OPTIMIZATIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+# This config is optimized for WSL2. When migrating to native macOS M5, adjust:
+#
+#   1. core.longpaths: Set to false (Windows-only for NTFS long path support)
+#   2. core.fsmonitor: Set to true (enables native macOS FS event monitoring)
+#   3. fetch.parallel: Increase from 4 to 8-10 (M5 has 8-10 cores)
+#   4. index.threads: Increase from 4 to 8-10 (better ARM64 multi-core utilization)
+#   5. delta.syntax-theme: Consider Nord, Dracula, or Monokai Soda for Terminal.app
+#   6. Credential helper: Same on both platforms (no changes needed)
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
 [advice]
 	detachedHead = false
 [core]
-	autocrlf = input
 	abbrev = 12
+	autocrlf = input
+	checkStat = minimal
+	# macOS: Use `code --wait` or fallback to `nano` if VSCode not available
+	editor = code --wait
 	excludesFile = ~/.config/git/ignore
 	filemode = true
+	# WSL: disabled due to performance issues with NTFS. macOS: can enable with `true` for native filesystem monitoring
 	fsmonitor = false
+	# WSL-only: handles long paths on NTFS. macOS: remove or set to false (not applicable on APFS/HFS+)
+	longpaths = true
+	pager = delta
+	preloadindex = true
 	quotePath = false
+	safeCRLF = warn
+	sparseCheckout = true
 	untrackedCache = true
 	whitespace = fix,-indent-with-non-tab,trailing-space,cr-at-eol
-	pager = delta
-	editor = code --wait
 [branch]
 	autoSetupRebase = always
 	sort = -committerdate
@@ -166,23 +188,28 @@ cat > "$GIT_DIR/config" << 'CONFIG_EOF'
 [init]
 	defaultBranch = main
 [log]
-	date = iso
-	showSignature = false
 	abbrevCommit = true
+	date = iso
 	follow = true
+	showSignature = false
 [maintenance]
 	auto = true
+	# WSL: autodetach helps avoid background process overhead. macOS: can set to true for same benefit
+	autodetach = true
 	strategy = incremental
+[maintenance "runMaintenance"]
+	# macOS M5: schedule = daily is optimal. Can adjust to hourly on faster machines with auto=true
+	schedule = daily
 [pull]
 	rebase = merges
 [blame]
 	coloring = highlightRecent
 	date = relative
 [rebase]
-	updateRefs = true
 	abbreviateCommands = true
 	autoSquash = true
 	autoStash = true
+	updateRefs = true
 [color]
 	ui = true
 [color "branch"]
@@ -206,31 +233,34 @@ cat > "$GIT_DIR/config" << 'CONFIG_EOF'
 [difftool]
 	prompt = false
 [fetch]
-	parallel = 0
+	# WSL: 4 is safe. macOS M5: increase to 8-10 for better parallelization (M5 has 8-10 cores)
+	parallel = 4
 	prune = true
 	pruneTags = true
 	writeCommitGraph = true
 [gc]
+	autodetach = true
 	cruftPacks = true
 [grep]
 	column = true
 	fullName = true
 	lineNumber = true
 [interactive]
-	singleKey = true
 	diffFilter = delta --color-only
+	singleKey = true
 [pack]
 	writeReverseIndex = true
 [revert]
 	reference = true
 [index]
-	threads = 0
+	# WSL: 4 is balanced. macOS M5: increase to 8-10 for better index performance on multi-core ARM
+	threads = 4
 [status]
 	aheadBehind = true
 	showUntrackedFiles = all
 [tag]
-	sort = version:refname
 	gpgSign = true
+	sort = version:refname
 [transfer]
 	fsckObjects = true
 [merge]
@@ -244,6 +274,7 @@ cat > "$GIT_DIR/config" << 'CONFIG_EOF'
 	autoSetupRemote = true
 	default = simple
 	followTags = true
+	# Both WSL and macOS M5: SSH signing. macOS may prefer `gpgSign = true` for all commits if using GPG suite
 	gpgSign = if-asked
 	useForceIfIncludes = true
 [sequence]
@@ -251,43 +282,34 @@ cat > "$GIT_DIR/config" << 'CONFIG_EOF'
 [rerere]
 	autoUpdate = true
 	enabled = true
-[url "git@github.com:"]
-	insteadOf = ggh:
 [url "https://github.com/"]
 	insteadOf = gh:
-[url "https://bitbucket.org/"]
-	insteadOf = bb:
 [delta]
-	features = side-by-side-if-terminal-wide
-	navigate = true
-	paging = always
-	side-by-side = false
-	line-numbers = true
-	true-color = always
-	syntax-theme = TwoDark
-	#
 	commit-decoration-style = bold yellow box ul
 	commit-style = raw
-	#
-	file-style = bold yellow ul
+	features = side-by-side-if-terminal-wide
 	file-decoration-style = bold yellow ul box
-	#
-	hunk-header-style = file line-number syntax
+	file-style = bold yellow ul
 	hunk-header-decoration-style = yellow box
 	hunk-header-file-style = bold yellow
 	hunk-header-line-number-style = bold magenta
-	#
-	minus-style = syntax "#340001"
-	plus-style = syntax "#012800"
-	minus-emph-style = syntax bold "#6f0000"
-	plus-emph-style = syntax bold "#005500"
-	#
+	hunk-header-style = file line-number syntax
+	line-numbers = true
+	line-numbers-left-format = " {nm:>4} │ "
 	line-numbers-minus-style = brightred
 	line-numbers-plus-style = brightgreen
-	line-numbers-zero-style = brightblack
-	line-numbers-left-format = " {nm:>4} │ "
 	line-numbers-right-format = " {np:>4} │ "
-	#
+	line-numbers-zero-style = brightblack
+	minus-emph-style = syntax bold "#6f0000"
+	minus-style = syntax "#340001"
+	navigate = true
+	paging = always
+	plus-emph-style = syntax bold "#005500"
+	plus-style = syntax "#012800"
+	side-by-side = false
+	# WSL: TwoDark works well with most terminal themes. macOS: try Dracula, Nord, or Monokai Soda for Terminal.app
+	syntax-theme = TwoDark
+	true-color = always
 	whitespace-error-style = 22 reverse
 [diff "exif"]
 	textconv = exiftool
@@ -304,143 +326,114 @@ cat > "$GIT_DIR/config" << 'CONFIG_EOF'
 # includeIf activates the matching per-host config only for repos under the
 # given path. This lets you keep separate identities (signingKey, name, email)
 # per host without any manual switching — git selects the right one based on
-# where the repo lives.
-#
-# CUSTOMIZE: If your repos live elsewhere, edit these paths. Examples:
-#   [includeIf "gitdir:~/projects/work/**/.git"]
-#   [includeIf "gitdir:/home/user/code/gitlab/**/.git"]
-#
-# Add more blocks here for other hosts (e.g. GitLab, work Bitbucket) following
-# the same pattern as github/.gitconfig and bitbucket/.gitconfig.
-[includeIf "gitdir:~/code/git_hub/**/.git"]
-	path = ~/.config/git/github/.gitconfig
-[includeIf "gitdir:~/code/bit_bucket/**/.git"]
-	path = ~/.config/git/bitbucket/.gitconfig
+# where the repo lives. Add more blocks here for other hosts (e.g. GitLab,
+# work Bitbucket) following the same pattern.
 [alias]
-	# Basic Operations
+	# ━━━━━━ CONFIG ━━━━━━
 	alias = "!f() { git config --get-regexp '^alias\\.' | sed 's/alias\\.//' | sort; }; f"
-	review = "!git diff --cached --color=always | less -R"
-	whoami = "!f() { \
-		printf '\\n%b\\n' '\\033[1;36m━━ Git Configuration ━━\\033[0m'; \
-		printf '%b %s\\n' '\\033[1;32m✓\\033[0m Name:' \"$(git config user.name)\"; \
-		printf '%b %s\\n' '\\033[1;32m✓\\033[0m Email:' \"$(git config user.email)\"; \
-		printf '%b %s\\n' '\\033[1;32m✓\\033[0m Signing key:' \"$(git config user.signingkey)\"; \
-		printf '%b %s\\n' '\\033[1;32m✓\\033[0m GPG format:' \"$(git config gpg.format)\"; \
-		printf '%b\\n\\n' '\\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━\\033[0m'; \
-	}; f"
-	edit-last = commit --amend --no-verify
-	fresh = "!f() { git checkout -b \"$1\" && git push -u origin \"$1\"; }; f"
-	wip = "!git add -A && git commit -m 'WIP: work in progress'"
-	fixup = "!f() { git commit --fixup \"$1\"; }; f"
-	autofixup = "!git rebase -i --autosquash HEAD~$(git rev-list --count HEAD ^origin/main)"
 	conf = "!f() { git config --global --edit && echo '✓ Config saved'; }; f"
+	whoami = "!f() { printf '\\n%b\\n' '\\033[1;36m━━ Git Configuration ━━\\033[0m'; printf '%b %s\\n' '\\033[1;32m✓\\033[0m Name:' \"$(git config user.name)\"; printf '%b %s\\n' '\\033[1;32m✓\\033[0m Email:' \"$(git config user.email)\"; printf '%b %s\\n' '\\033[1;32m✓\\033[0m Signing key:' \"$(git config user.signingkey)\"; printf '%b\\n\\n' '\\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━\\033[0m'; }; f"
+	# ━━━━━━ STAGING ━━━━━━
 	addp = add --patch
 	add-all = add --all
 	unstage = restore --staged
-	discard = restore --worktree
-	# Commit Operations
+	discard = "!f() { echo '⚠️  Files to discard:'; git diff --name-only; read -p 'Continue? (y/n) ' -n 1; echo; [[ $REPLY == 'y' ]] && git restore --worktree || echo '❌ Cancelled'; }; f"
+	review = "!git diff --cached --color=always | delta"
+	st = "!git status --short --branch --color=always"
+	# ━━━━━━ COMMITS ━━━━━━
+	ac = "!git add --all && git commit --verbose"
+	acm = "!f() { git add --all && git commit -m \"$1\"; }; f"
+	scope = "!f() { git commit -m \"$1($2): $3\"; }; f"
+	edit-last = commit --amend --no-verify
 	mnd = commit --all --amend --no-edit
 	amend = commit --amend --reuse-message=HEAD
-	undo = reset HEAD~1 --mixed
 	recommit = commit --amend -m
-	# Branch Operations
+	undo = reset --soft HEAD~1
+	wip = "!git add -A && git commit -m 'WIP: work in progress'"
+	fixup = "!f() { git commit --fixup \"$1\"; }; f"
+	autofixup = "!upstream=$(git rev-parse --abbrev-ref @{u} 2>/dev/null || echo 'origin/main'); git rebase -i --autosquash \"$upstream\""
+	impact = "!git diff --cached --numstat | awk '{added+=$1; removed+=$2} END {print \"Lines added: \" added \", Lines removed: \" removed}'"
+	# ━━━━━━ BRANCHES ━━━━━━
 	br = branch
 	bra = branch --all
 	brd = branch --delete
 	brv = branch --verbose --verbose
 	current = branch --show-current
-	# Merge Operations
-	mff = merge --no-ff
-	mmsg = merge --no-edit
-	pick = cherry-pick --no-commit
-	cont = rebase --continue
-	# Stash Operations
-	stashk = stash push --keep-index
-	stash-all = stash push --include-untracked
-	stash-pop = stash pop
-	# Rebase Operations
+	fresh = "!f() { git checkout -b \"$1\" && git push -u origin \"$1\"; }; f"
+	recent = "!git for-each-ref --sort=-committerdate refs/heads --format='%(refname:short) %(committerdate:relative)' | head -15"
+	stale = "!git branch --sort=committerdate --format='%(committerdate:relative)%09%(refname:short)' | tail -15"
+	# ━━━━━━ REBASE ━━━━━━
 	rebase-onto = "!f() { git rebase --onto ${1-main} ${2-main}; }; f"
+	rebase-main = "!git fetch origin main && git rebase origin/main"
 	reb = "!r() { git rebase --interactive HEAD~$1; }; r"
 	rebase-branch = "!f() { git rebase --interactive $(git merge-base HEAD ${1-main}); }; f"
-	resign = "!r() { git rebase --interactive HEAD~$1 --exec \"git commit --amend -S --no-edit --no-verify\"; }; r"
-	# Remote Operations
+	resign = "!r() { git rebase --interactive HEAD~${1:-10} --exec \"git commit --amend -S --no-edit --no-verify\"; }; r"
+	cont = rebase --continue
+	# ━━━━━━ MERGE ━━━━━━
+	mff = merge --no-ff
+	mmsg = merge --no-edit
+	# ━━━━━━ PUSH/FETCH ━━━━━━
 	fp = fetch --all --prune
+	sync = "!upstream=$(git rev-parse --abbrev-ref @{u} 2>/dev/null || echo 'origin/main'); git fetch && git rebase \"$upstream\""
 	pushf = push --force-with-lease --force-if-includes
+	undo-push = "!git push --force-with-lease origin HEAD~1:$(git branch --show-current)"
 	promi = "!r() { git pull --rebase=interactive origin ${1-main}; }; r"
-	sync = "!f() { git fetch origin ${1-main} && git rebase origin/${1-main}; }; f"
-	# Log and History
-	lg = log --graph \
-		--abbrev-commit \
-		--decorate \
-		--all \
-		--date=relative \
-		--format=format:'%C(bold blue)%h%C(reset) %C(bold yellow)%d%C(reset) %C(white)%s%C(reset) %C(bold cyan)(%an)%C(reset) %C(bold green)(%ar)%C(reset)'
-	lga = log --graph \
-		--abbrev-commit \
-		--decorate \
-		--date=relative \
-		--format=format:'%C(bold blue)%h%C(reset)%C(bold yellow)%d%C(reset) %C(white)%s%C(reset) %C(bold green)(%ar)%C(reset)' \
-		--all
+	# ━━━━━━ STASH ━━━━━━
+	stashk = stash push --keep-index
+	stash-all = stash push --include-untracked
+	stash-list = stash list --format="%C(yellow)%gd%C(reset) %s"
+	# ━━━━━━ LOG & HISTORY ━━━━━━
+	lg = log --graph --abbrev-commit --decorate --all --date=relative --format=format:'%C(bold blue)%h%C(reset) %C(bold yellow)%d%C(reset) %C(white)%s%C(reset) %C(bold cyan)(%an)%C(reset) %C(bold green)(%ar)%C(reset)'
+	lga = log --graph --abbrev-commit --decorate --all --date=relative --format=format:'%C(bold blue)%h%C(reset)%C(bold yellow)%d%C(reset) %C(white)%s%C(reset) %C(bold green)(%ar)%C(reset)'
 	log-summary = log --oneline --graph --decorate --all
+	what = log --oneline -n 10
 	new = log --graph main..HEAD --oneline
 	missing = log --graph HEAD..main --oneline
 	ahead = log main..HEAD --oneline
 	behind = log HEAD..main --oneline
 	commits-today = log --since=today --oneline
-	# Status and Diff
-	st = "!git status --short --branch --color=always"
-	diff-tool = difftool --dir-diff
-	staged-files = diff --cached --name-only
-	unstaged-files = diff --name-only
-	all-changes = diff HEAD --name-only
-	# Maintenance and Cleanup
-	cleanup = "!f() { \
-		echo '🧹 Cleaning merged branches...'; \
-		git branch --merged main | grep -v '* main' | xargs -r git branch -d; \
-		echo '✅ Done'; \
-	}; f"
-	gc-aggressive = gc --aggressive --prune=now
-	bootstrap = "!f() { \
-		echo \"🚀 Bootstrapping new Git repository...\"; \
-		git init || return 1; \
-		echo \"⚙️ Registering maintenance...\"; \
-		git maintenance register || return 1; \
-		git maintenance start || return 1; \
-		echo \"🎯 Creating initial commit...\"; \
-		git commit --allow-empty --message 'chore: initial commit' \
-			$(git config --get commit.gpgsign | grep -q true && echo '-S') || return 1; \
-		echo \"✅ Repository bootstrap complete!\"; \
-	}; f"
-	# Search
+	commits-week = "!git log --since='1 week ago' --oneline"
+	commits-since = "!f() { git log --since=\"$1\" --oneline --all; }; f"
+	changed = show --name-status
+	mine = "!git log --author=\"$(git config user.name)\" --oneline"
+	# ━━━━━━ SEARCH ━━━━━━
 	find-commit = log --oneline --grep
 	find-author = log --oneline --author
 	find-file = log --oneline --name-only
 	find-deleted = log --oneline --diff-filter=D --summary
-	# Statistics
+	find-deleted-line = "!f() { git log -p -S \"$1\" --all | head -100; }; f"
+	find-function = "!f() { git log -p --all -G \"(def|function) $1\" -- '*.js' '*.go' '*.php' '*.ts'; }; f"
+	# ━━━━━━ DIFF ━━━━━━
+	diff-tool = difftool --dir-diff
+	diff-main = "!git diff origin/main...HEAD --stat"
+	staged-files = diff --cached --name-only
+	unstaged-files = diff --name-only
+	all-changes = diff HEAD --name-only
+	# ━━━━━━ BLAME ━━━━━━
+	blame-line = "!f() { git blame -L ${2:-1},${3:-1} \"${1:-.}\"; }; f"
+	hotspots = "!git log --pretty=format: --name-only --diff-filter=d | sort | uniq -c | sort -rn | head -20"
+	# ━━━━━━ RESET & RECOVERY ━━━━━━
+	reset-soft = reset --soft
+	reset-hard = "!f() { echo '🚨 This will discard all changes'; read -p 'Type YES to confirm: ' confirm; [[ $confirm == 'YES' ]] && git reset --hard || echo '❌ Cancelled'; }; f"
+	restore-file = "!f() { git checkout HEAD -- \"$1\"; }; f"
+	untrack = "!f() { git rm --cached \"$1\" && echo \"✓ Untracked: $1\"; }; f"
+	root = rev-list --max-parents=0 HEAD
+	# ━━━━━━ CHERRY-PICK ━━━━━━
+	pick = cherry-pick --no-commit
+	# ━━━━━━ MAINTENANCE ━━━━━━
+	cleanup = "!f() { echo '🧹 Cleaning merged branches...'; git branch --merged main | grep -v '* main' | xargs -r git branch -d; echo '✅ Done'; }; f"
+	gc-aggressive = gc --aggressive --prune=now
+	bootstrap = "!f() { echo \"🚀 Bootstrapping new Git repository...\"; git init || return 1; git maintenance register || return 1; git maintenance start || return 1; git commit --allow-empty --message 'chore: initial commit' $(git config --get commit.gpgsign | grep -q true && echo '-S') || return 1; echo \"✅ Repository bootstrap complete!\"; }; f"
+	# ━━━━━━ STATISTICS ━━━━━━
 	stats = log --stat --oneline
 	authors = log --format='%aN' | sort | uniq -c | sort -rn
-	lines-changed = log --format=medium --numstat
-	# Quick commit shortcuts
-	ac = "!git add --all && git commit --verbose"
-	acm = "!f() { git add --all && git commit -m \"$1\"; }; f"
-	changed = show --name-status
-	recent = branch --sort=-committerdate --format='%(refname:short) %(committerdate:relative)'
-	contributors = shortlog -sn
-	diff-main = "!git diff origin/main...HEAD --stat"
-	commits-week = "!git log --since='1 week ago' --oneline"
 	top-authors = "!git shortlog -sn --all | head -10"
-	what = "!git log --oneline -n 10"
-	mine = "!git log --author=\"$(git config user.name)\" --oneline"
-	ignore = "!f() { echo \"$1\" >> .gitignore; }; f"
-	restore-file = "!f() { git checkout HEAD -- \"$1\"; }; f"
-	untrack = "rm --cached"
-	hotspots = "!git log -p --all -S \"\" --numstat | grep '^[0-9]' | awk '{print $3}' | sort | uniq -c | sort -rn | head"
-	impact = "!git diff --cached --numstat | awk '{added+=$1; removed+=$2} END {print \"Lines added: \" added \", Lines removed: \" removed}'"
-	blame-line = "!f() { git blame -L $2,$2 $1; }; f"
-	stash-list = stash list --format="%C(yellow)%gd%C(reset) %s"
-	root = rev-list --max-parents=0 HEAD
-	stale = branch --sort=committerdate --format='%(committerdate:relative)%09%(refname:short)'
-	resign-branch = "!git rebase --exec 'git commit --amend --no-edit -S' $(git merge-base HEAD main)"
+	contributors = shortlog -sn
+	lines-changed = log --format=medium --numstat
+	# ━━━━━━ MONOREPO ━━━━━━
+	workspace = "!f() { cd packages/$1 && git status; }; f"
+	affected = "!git diff origin/main...HEAD --name-only | grep -o 'packages/[^/]*' | sort -u"
+	packages-changed = "!git diff --name-only | cut -d'/' -f2 | sort -u"
 [user]
 	signingKey = ~/.ssh/id_ed25519.pub
 	name = __GIT_NAME__
@@ -449,6 +442,11 @@ cat > "$GIT_DIR/config" << 'CONFIG_EOF'
 	format = ssh
 [gpg "ssh"]
 	allowedSignersFile = ~/.config/git/allowed_signers
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	process = git-lfs filter-process
+	required = true
+	smudge = git-lfs smudge -- %f
 CONFIG_EOF
 
 # Inject personal values (sed delimiter | avoids conflicts with path slashes)
@@ -466,6 +464,7 @@ rm -f "$GIT_DIR/config.bak"
 # Write directly to $GIT_DIR/config instead of --global, because GIT_CONFIG_GLOBAL
 # may not be set yet when this script runs (it is set by .zprofile at login time).
 # Using --global here would write to ~/.gitconfig and conflict with the XDG config.
+# Note: Both WSL and macOS M5 use identical gh CLI credential setup. No adjustments needed.
 # =============================================================================
 GH_BIN=$(command -v gh 2>/dev/null || true)
 if [[ -n "$GH_BIN" ]]; then
