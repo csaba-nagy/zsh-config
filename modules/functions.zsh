@@ -1,5 +1,8 @@
 # Custom functions for common tasks and workflows
 
+[[ -n "$__functions_zsh_loaded" ]] && return
+__functions_zsh_loaded=1
+
 # =============================================================================
 # ENVIRONMENT HELPERS
 # =============================================================================
@@ -301,7 +304,9 @@ upgrade() {
   setopt LOCAL_OPTIONS
   unsetopt MONITOR NOTIFY
 
-  local only_tools dry_run
+  local only_tools dry_run quiet_mode=0
+  [[ ! -t 1 ]] && quiet_mode=1
+
   while [[ -n "$1" ]]; do
     case "$1" in
       --only)   only_tools="$2"; shift 2 ;;
@@ -361,11 +366,21 @@ upgrade() {
     fi
   }
   _upgrade_rust() {
-    command -v rustup &>/dev/null && rustup update
-    command -v cargo  &>/dev/null && _cargo_smart_update
+    if command -v rustup &>/dev/null; then
+      echo "updating rustup..."
+      rustup update || echo "rustup update failed"
+    else
+      echo "rustup not installed"
+    fi
+    if command -v cargo &>/dev/null; then
+      _cargo_smart_update || echo "cargo update failed"
+    fi
   }
   _upgrade_go() {
     [[ ! -x "$HOME/go/bin/g" ]] && return 0
+    export GOPATH="${GOPATH:-$HOME/go}"
+    export GOROOT="${GOROOT:-$HOME/go/go}"
+    export PATH="$GOPATH/bin:$PATH"
     local local_go=$(go version 2>/dev/null | awk '{print $3}' | sed 's/go//') || return 0
     local remote_go=$(curl -sf 'https://go.dev/VERSION?m=text' 2>/dev/null | head -1 | sed 's/go//') || return 0
     [[ -n "$remote_go" && "$local_go" != "$remote_go" ]] && "$HOME/go/bin/g" install latest && "$HOME/go/bin/g" use latest || true
@@ -409,44 +424,48 @@ upgrade() {
     return 0
   fi
 
-  # Spinner display loop
-  local -a spinner=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
-  local spin_i=1 n=${#names[@]}
-  for name in $names; do
-    printf "  ${_COLOR_YELLOW}${spinner[1]}${_COLOR_RESET} [%-8s] starting...\n" "$name"
-  done
-  typeset -A done_line
-  local all_done=0 s start_t end_t elapsed now
-  while (( ! all_done )); do
-    sleep 0.15
-    printf '\033[%dA' "$n"
-    all_done=1 now=$EPOCHSECONDS
+  # Spinner display loop (skip in non-interactive mode)
+  if (( quiet_mode )); then
+    for pid in $pids; do wait "$pid" 2>/dev/null; done
+  else
+    local -a spinner=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+    local spin_i=1 n=${#names[@]}
     for name in $names; do
-      if [[ -n ${done_line[$name]} ]]; then
-        printf '%s\n' "${done_line[$name]}"
-        continue
-      fi
-      s=$(<"$tmpdir/${name}.status" 2>/dev/null)
-      start_t=$(<"$tmpdir/${name}.start" 2>/dev/null)
-      start_t=${start_t:-$now}
-      if [[ "$s" == 'done' ]]; then
-        end_t=$(<"$tmpdir/${name}.end" 2>/dev/null)
-        elapsed=$(( ${end_t:-$now} - start_t ))
-        done_line[$name]=$(printf "\033[2K\r  ${_COLOR_GREEN}✓${_COLOR_RESET} [%-8s] done     ${_COLOR_DIM}%3ds${_COLOR_RESET}" "$name" "$elapsed")
-        printf '%s\n' "${done_line[$name]}"
-      elif [[ "$s" == 'failed' ]]; then
-        end_t=$(<"$tmpdir/${name}.end" 2>/dev/null)
-        elapsed=$(( ${end_t:-$now} - start_t ))
-        done_line[$name]=$(printf "\033[2K\r  ${_COLOR_RED}✗${_COLOR_RESET} [%-8s] FAILED   ${_COLOR_DIM}%3ds${_COLOR_RESET}" "$name" "$elapsed")
-        printf '%s\n' "${done_line[$name]}"
-      else
-        elapsed=$(( now - start_t ))
-        printf "\033[2K\r  ${_COLOR_YELLOW}%s${_COLOR_RESET} [%-8s] running  ${_COLOR_DIM}%3ds${_COLOR_RESET}\n" "${spinner[$spin_i]}" "$name" "$elapsed"
-        all_done=0
-      fi
+      printf "  ${_COLOR_YELLOW}${spinner[1]}${_COLOR_RESET} [%-8s] starting...\n" "$name"
     done
-    (( spin_i = spin_i % ${#spinner} + 1 ))
-  done
+    typeset -A done_line
+    local all_done=0 s start_t end_t elapsed now
+    while (( ! all_done )); do
+      sleep 0.15
+      printf '\033[%dA' "$n"
+      all_done=1 now=$EPOCHSECONDS
+      for name in $names; do
+        if [[ -n ${done_line[$name]} ]]; then
+          printf '%s\n' "${done_line[$name]}"
+          continue
+        fi
+        s=$(<"$tmpdir/${name}.status" 2>/dev/null)
+        start_t=$(<"$tmpdir/${name}.start" 2>/dev/null)
+        start_t=${start_t:-$now}
+        if [[ "$s" == 'done' ]]; then
+          end_t=$(<"$tmpdir/${name}.end" 2>/dev/null)
+          elapsed=$(( ${end_t:-$now} - start_t ))
+          done_line[$name]=$(printf "\033[2K\r  ${_COLOR_GREEN}✓${_COLOR_RESET} [%-8s] done     ${_COLOR_DIM}%3ds${_COLOR_RESET}" "$name" "$elapsed")
+          printf '%s\n' "${done_line[$name]}"
+        elif [[ "$s" == 'failed' ]]; then
+          end_t=$(<"$tmpdir/${name}.end" 2>/dev/null)
+          elapsed=$(( ${end_t:-$now} - start_t ))
+          done_line[$name]=$(printf "\033[2K\r  ${_COLOR_RED}✗${_COLOR_RESET} [%-8s] FAILED   ${_COLOR_DIM}%3ds${_COLOR_RESET}" "$name" "$elapsed")
+          printf '%s\n' "${done_line[$name]}"
+        else
+          elapsed=$(( now - start_t ))
+          printf "\033[2K\r  ${_COLOR_YELLOW}%s${_COLOR_RESET} [%-8s] running  ${_COLOR_DIM}%3ds${_COLOR_RESET}\n" "${spinner[$spin_i]}" "$name" "$elapsed"
+          all_done=0
+        fi
+      done
+      (( spin_i = spin_i % ${#spinner} + 1 ))
+    done
+  fi
 
   # Reap all background jobs (suppress job control output)
   for pid in $pids; do wait "$pid" 2>/dev/null; done
@@ -491,10 +510,18 @@ upgrade() {
   rm -rf "$tmpdir"
 
   if (( has_failure )); then
-    printf "${_COLOR_RED}✗ Some jobs failed — check logs above.${_COLOR_RESET}\n"
+    if (( quiet_mode )); then
+      printf "[FAILED] Some jobs failed — check logs above.\n"
+    else
+      printf "${_COLOR_RED}✗ Some jobs failed — check logs above.${_COLOR_RESET}\n"
+    fi
     return 1
   fi
-  printf "${_COLOR_GREEN}✓ All done!${_COLOR_RESET}\n"
+  if (( quiet_mode )); then
+    printf "[OK] All done!\n"
+  else
+    printf "${_COLOR_GREEN}✓ All done!${_COLOR_RESET}\n"
+  fi
 }
 
 # =============================================================================
