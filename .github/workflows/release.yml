@@ -1,0 +1,25 @@
+name: release
+
+# Pushing an annotated tag like v2.0.0 creates a GitHub Release from it,
+# using the tag's annotation message as the release notes:
+#   git tag -a v2.1.0 -m "..notes.."  &&  git push origin v2.1.0
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub Release from tag annotation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --title "$GITHUB_REF_NAME" \
+            --notes-from-tag
