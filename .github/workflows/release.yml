@@ -1,11 +1,23 @@
 name: release
 
-# Pushing an annotated tag like v2.0.0 creates a GitHub Release from it,
-# using the tag's annotation message as the release notes:
-#   git tag -a v2.1.0 -m "..notes.."  &&  git push origin v2.1.0
+# Two ways to cut a release:
+#
+# 1. Push an annotated tag (notes = tag annotation):
+#      git tag -a v2.1.0 -m "..notes.."  &&  git push origin v2.1.0
+#
+# 2. Run this workflow manually (Actions → release → Run workflow) with a
+#    version like v2.1.0 — the tag AND release are created at main's head.
+#    Notes are taken from docs/releases/<version>.md if that file exists,
+#    otherwise auto-generated from merged PRs.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. v2.0.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,7 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Create GitHub Release from tag annotation
+
+      - name: Create release from pushed tag
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -23,3 +37,21 @@ jobs:
             --verify-tag \
             --title "$GITHUB_REF_NAME" \
             --notes-from-tag
+
+      - name: Create tag + release (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [ -f "docs/releases/$VERSION.md" ]; then
+            gh release create "$VERSION" \
+              --target "$GITHUB_SHA" \
+              --title "$VERSION" \
+              --notes-file "docs/releases/$VERSION.md"
+          else
+            gh release create "$VERSION" \
+              --target "$GITHUB_SHA" \
+              --title "$VERSION" \
+              --generate-notes
+          fi
