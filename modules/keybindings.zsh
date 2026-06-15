@@ -103,3 +103,10 @@ bindkey '^[m' copy-prev-shell-word
 # PageUp/PageDown: navigate history
 [[ -n "${terminfo[kpp]}" ]] && bindkey "${terminfo[kpp]}" up-line-or-history
 [[ -n "${terminfo[knp]}" ]] && bindkey "${terminfo[knp]}" down-line-or-history
+
+# =============================================================================
+# MACOS ALT KEY HANDLING
+# On macOS in Alacritty, Alt key sends Esc prefix (Alt+C → Esc+C → ^[c).
+# This is standard macOS terminal behavior. fzf's `fzf --zsh` automatically
+# sets up Alt+C, Ctrl+T, and Ctrl+R bindings using this escape sequence.
+# =============================================================================

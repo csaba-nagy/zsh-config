@@ -1,127 +1,34 @@
 # Alacritty terminal emulator configuration
 # https://alacritty.org/config-alacritty.html
 
+[general]
+live_config_reload = true
+
 [env]
 # Set the TERM environment variable for this terminal
 TERM = "alacritty"
 
 [window]
 # Window opacity (0.0 - 1.0)
-opacity = 1.0
-
+opacity = 0.95
 # Window padding
-padding = { x = 12, y = 12 }
-
-# Startup mode: "Windowed" or "Fullscreen"
-startup_mode = "Windowed"
-
-# Window decorations: "Full", "None", or "Transparent"
-decorations = "Full"
+padding = { x = 10, y = 10 }
 
 [font]
-# Use built-in monospace font family as fallback
-normal = { family = "Menlo", style = "Regular" }
-bold = { family = "Menlo", style = "Bold" }
-italic = { family = "Menlo", style = "Italic" }
-bold_italic = { family = "Menlo", style = "Bold Italic" }
-
-# Font size in points
+normal = { family = "Monaco", style = "Regular" }
 size = 12.0
 
-# Offset for the Y axis of the font
-offset = { x = 0, y = 0 }
-
-[colors]
-# Default colors (Catppuccin Mocha theme)
-[colors.primary]
-background = "#1e1e2e"
-foreground = "#cdd6f4"
-
-[colors.normal]
-black   = "#45475a"
-red     = "#f38ba8"
-green   = "#a6e3a1"
-yellow  = "#f9e2af"
-blue    = "#89b4fa"
-magenta = "#f5c2e7"
-cyan    = "#94e2d5"
-white   = "#bac2de"
-
-[colors.bright]
-black   = "#585b70"
-red     = "#f38ba8"
-green   = "#a6e3a1"
-yellow  = "#f9e2af"
-blue    = "#89b4fa"
-magenta = "#f5c2e7"
-cyan    = "#94e2d5"
-white   = "#a6adc8"
-
-[bell]
-# Visual bell animation effect: "EaseOutExpo", "EaseOutCubic", "EaseOutQuart", "Linear"
-animation = "EaseOutExpo"
-
-# Duration of the visual bell flash in milliseconds
-duration = 0
-
-# Visual bell will only show animation when true
-visual = true
-
-[scrollback]
-# Maximum number of lines in the scrollback buffer
-lines = 10000
-
-# Multiplier for scrolling: number of lines scrolled per mouse wheel event
-multiplier = 3
-
-[shell]
-# Program to use as shell, if empty it will use the user's login shell
-# program = "/bin/zsh"
-
-# Arguments passed to the shell on startup
-# args = []
-
-[selection]
-# This string contains all characters that are used as separators for "semantic words" in Alacritty
-semantic_escape_chars = ",│`|:\"' ()[]{}<>\\t"
-
-# When set to true, selected text will be copied to the primary clipboard
-save_to_clipboard = true
-
 [cursor]
-# Cursor style: "Block", "Underline", or "Beam"
-style = "Block"
-
-# If cursor.style is Block, this sets the thickness of the cursor bar as a fraction of the cell width
+style = { shape = "Underline", blinking = "Off" }
 thickness = 0.15
 
-# Cursor blinking interval in milliseconds
-vi_mode_style = "Beam"
-
 [mouse]
-# Whether the mouse pointer should be hidden when typing
-hide_when_typing = true
+# Right-click to paste
+bindings = [
+  { mouse = "Right", action = "Paste" }
+]
 
-[hints]
-# Terminal hints for mouse interactions (e.g., opening URLs)
-# See https://alacritty.org/config-alacritty.html#hints for configuration
-
-[[hints.enabled]]
-# Regex pattern for hints
-regex = "(ipfs:|ipns:|magnet:|mailto:|gemini://|gopher://|https://|http://|news:|nntp:|telnet:|tn3270:|ssh:|sftp:)[^\\u0000-\\u001F\\u007F-\\u009F<>\"\\\\s{-}\\\\^⟨⟩]+"
-
-# Command that will be executed when the hint is clicked
-command = "open"
-
-# Post-processing for the matched hint text
-post_processor = false
-
-# Letter that needs to be pressed to start selecting a hint
-mouse_binding = "Right"
-
-[[hints.enabled]]
-regex = "(?:^|\\.\\./?)\\S+(/S+)*"
-command = "open"
-post_processor = false
-mouse_binding = "Right"
-binding = { key = "U", mods = "Control|Shift" }
+[keyboard]
+# macOS Alt key handling: send Esc prefix (e.g., Alt+C → Esc+C)
+# Required for fzf shortcuts (Ctrl+T, Alt+C, Ctrl+R) and other alt-key bindings
+bindings = []
