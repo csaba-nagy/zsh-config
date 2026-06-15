@@ -258,6 +258,16 @@ fi
 ln -sf "$ZSH_DIR/tmux/tmux.conf" "$TMUX_CONF"
 info "Linked tmux config"
 
+# 5b. alacritty config symlink (back up an existing real file first)
+mkdir -p "$XDG_CONFIG_HOME/alacritty"
+ALACRITTY_CONF="$XDG_CONFIG_HOME/alacritty/alacritty.toml"
+if [[ -f "$ALACRITTY_CONF" && ! -L "$ALACRITTY_CONF" ]]; then
+  warn "Existing alacritty.toml backed up to alacritty.toml.bak"
+  mv "$ALACRITTY_CONF" "$ALACRITTY_CONF.bak"
+fi
+ln -sf "$ZSH_DIR/alacritty/alacritty.toml" "$ALACRITTY_CONF"
+info "Linked alacritty config"
+
 # 6. Project root for gg/gb aliases and freespace
 mkdir -p "$HOME/Development/code"
 info "Project root: ~/Development/code (override CODE_DIR in modules/local.zsh)"
