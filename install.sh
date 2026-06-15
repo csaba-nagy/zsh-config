@@ -226,7 +226,17 @@ fi
 printf '%s\n' "$ZSHENV_CONTENT" > "$ZSHENV"
 info "Wrote ~/.zshenv"
 
-# 3. Machine-local overrides (gitignored)
+# 3. Interactive mode state (persists user preference for starship prompt)
+ZSH_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/zsh"
+mkdir -p "$ZSH_STATE_DIR"
+if [[ ! -f "$ZSH_STATE_DIR/interactive-mode" ]]; then
+  echo "on" > "$ZSH_STATE_DIR/interactive-mode"
+  info "Created zsh state directory and interactive-mode toggle"
+else
+  info "interactive-mode toggle already exists — kept"
+fi
+
+# 4. Machine-local overrides (gitignored)
 if [[ ! -f "$ZSH_DIR/modules/local.zsh" ]]; then
   cat > "$ZSH_DIR/modules/local.zsh" << 'EOF'
 # Machine-local zsh config (gitignored — safe for secrets and machine quirks)
@@ -238,7 +248,7 @@ else
   info "modules/local.zsh already exists — kept"
 fi
 
-# 4. tmux config symlink (back up an existing real file first)
+# 5. tmux config symlink (back up an existing real file first)
 mkdir -p "$XDG_CONFIG_HOME/tmux"
 TMUX_CONF="$XDG_CONFIG_HOME/tmux/tmux.conf"
 if [[ -f "$TMUX_CONF" && ! -L "$TMUX_CONF" ]]; then
@@ -248,11 +258,11 @@ fi
 ln -sf "$ZSH_DIR/tmux/tmux.conf" "$TMUX_CONF"
 info "Linked tmux config"
 
-# 5. Project root for gg/gb aliases and freespace
+# 6. Project root for gg/gb aliases and freespace
 mkdir -p "$HOME/Development/code"
 info "Project root: ~/Development/code (override CODE_DIR in modules/local.zsh)"
 
-# 6. Git identity + SSH signing (optional)
+# 7. Git identity + SSH signing (optional)
 if [[ -n "$GIT_NAME" && -n "$GIT_EMAIL" ]]; then
   step "Git setup (SSH signing)"
   bash "$ZSH_DIR/scripts/git-setup.sh" --name "$GIT_NAME" --email "$GIT_EMAIL"
