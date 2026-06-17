@@ -15,7 +15,8 @@ opacity = 0.95
 padding = { x = 10, y = 10 }
 
 [font]
-normal = { family = "Monaco", style = "Regular" }
+# brew install --cask font-maple-mono font-maple-mono-nf
+normal = { family = "Maple Mono NF", style = "Regular" }
 size = 12.0
 
 [cursor]

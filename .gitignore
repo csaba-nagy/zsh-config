@@ -2,6 +2,7 @@
 .zcompdump
 .zcompdump.*
 .zsh_history
+.zsh_sessions
 
 # Machine-local overrides — gitignored by design
 modules/local.zsh
