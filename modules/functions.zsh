@@ -253,9 +253,7 @@ upgrade() {
   }
   _upgrade_claude() {
     command -v claude &>/dev/null || return 0
-    local current=$(claude --version 2>/dev/null | awk '{print $1}') || return 0
-    local latest=$(npm view @anthropic-ai/claude-code version 2>/dev/null) || return 0
-    [[ -n "$latest" && "$current" != "$latest" ]] && claude update || true
+    brew upgrade --cask claude-code@latest 2>/dev/null || true
   }
 
   # Launch jobs (or show dry-run)
