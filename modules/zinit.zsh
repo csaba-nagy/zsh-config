@@ -13,7 +13,7 @@
 
 # Check if interactive mode is enabled (default: on, can be disabled with toggle_interactive off)
 _zinteractive_mode_file="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/interactive-mode"
-_zinteractive_mode=$(<"$_zinteractive_mode_file" 2>/dev/null || echo "on")
+_zinteractive_mode=$([[ -r "$_zinteractive_mode_file" ]] && <"$_zinteractive_mode_file" || echo "on")
 
 if [[ "$_zinteractive_mode" != "on" ]]; then
   # Skip Zinit plugins when interactive mode is off (for headless/automation use)

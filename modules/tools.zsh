@@ -38,7 +38,7 @@ _ztool_init() {
 # =============================================================================
 # Check if interactive mode is enabled (default: on)
 _zinteractive_mode_file="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/interactive-mode"
-_zinteractive_mode=$(<"$_zinteractive_mode_file" 2>/dev/null || echo "on")
+_zinteractive_mode=$([[ -r "$_zinteractive_mode_file" ]] && <"$_zinteractive_mode_file" || echo "on")
 
 if [[ "$_zinteractive_mode" == "on" ]]; then
   _ztool_init starship "$(command -v starship)" "starship init zsh"
