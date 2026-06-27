@@ -480,6 +480,42 @@ if [[ -n "$GH_BIN" ]]; then
 fi
 
 # =============================================================================
+# VALIDATION — catch bad substitutions or parse errors before the user notices
+# =============================================================================
+validate_key() {
+  local key="$1" expected="$2"
+  local actual
+  actual=$(git config --file "$GIT_DIR/config" "$key" 2>/dev/null)
+  if [[ -z "$actual" ]]; then
+    printf "  ✗ missing: %s\n" "$key" >&2; return 1
+  fi
+  if [[ -n "$expected" && "$actual" != "$expected" ]]; then
+    printf "  ✗ %s = %s (expected %s)\n" "$key" "$actual" "$expected" >&2; return 1
+  fi
+  printf "  ✓ %s = %s\n" "$key" "$actual"
+}
+
+printf "\n🔍 Validating config...\n"
+failed=0
+validate_key "user.name"            "$GIT_NAME"  || failed=1
+validate_key "user.email"           "$GIT_EMAIL" || failed=1
+validate_key "user.signingkey"      ""           || failed=1
+validate_key "gpg.format"           "ssh"        || failed=1
+validate_key "commit.gpgsign"       "true"       || failed=1
+validate_key "tag.gpgsign"          "true"       || failed=1
+validate_key "rerere.enabled"       "true"       || failed=1
+validate_key "fetch.parallel"       "$CORES"     || failed=1
+validate_key "index.threads"        "$CORES"     || failed=1
+validate_key "core.fsmonitor"       "true"       || failed=1
+validate_key "delta.paging"         "auto"       || failed=1
+
+if [[ $failed -ne 0 ]]; then
+  printf "\n❌ Validation failed — check %s\n" "$GIT_DIR/config" >&2
+  exit 1
+fi
+printf "All checks passed.\n"
+
+# =============================================================================
 # NEXT STEPS
 # =============================================================================
 printf "\n✅ Git configuration applied to %s\n\n" "$GIT_DIR"
