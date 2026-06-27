@@ -5,3 +5,25 @@
 brew "mise"       # node, go, python, … — per-project via .mise.toml (node pinned globally)
 brew "rustup"     # rust — per-project via rust-toolchain.toml (no global toolchain)
 brew "fastfetch"  # system info
+
+# Build tooling
+brew "just"       # command runner (justfile)
+brew "just-lsp"   # LSP for just
+
+# Containers
+brew "colima"          # container runtime (Docker alternative daemon)
+brew "docker"
+brew "docker-buildx"
+brew "docker-compose"
+
+# Local dev utilities
+brew "mkcert"     # local HTTPS certificates
+
+# AI / local LLMs
+# brew "ollama"
+
+# Apps
+cask "claude"
+cask "claude-code@latest"
+cask "visual-studio-code"
+# cask "zed"

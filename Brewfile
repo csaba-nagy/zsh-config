@@ -20,11 +20,20 @@ brew "ripgrep"    # grep replacement (rg)
 brew "dust"       # du replacement (du alias)
 brew "duf"        # df replacement (df alias)
 brew "procs"      # ps replacement (pss alias)
+brew "btop"       # top replacement
 brew "jq"         # JSON processor
+brew "wget"       # download tool
 
 # Git tooling
 brew "gh"         # GitHub CLI (auth, PRs, SSH key registration)
 brew "git-delta"  # diff pager (configured by git-setup.sh)
+brew "git-lfs"    # large file storage
 
 # Archives — sevenzip provides `7zz`, used by extract() for .7z and .rar
 brew "sevenzip"
+
+# Apps
+# cask "1password"
+cask "alacritty"
+cask "font-maple-mono"
+cask "font-maple-mono-nf"
