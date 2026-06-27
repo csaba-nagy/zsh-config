@@ -3,6 +3,11 @@
 .zcompdump.*
 .zsh_history
 .zsh_sessions
+Brewfile.lock.json
+.DS_Store
 
 # Machine-local overrides — gitignored by design
 modules/local.zsh
+
+# Claude Code session data and worktrees
+.claude/

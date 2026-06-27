@@ -364,7 +364,7 @@ upgrade() {
   printf '\n'
 
   trap - INT TERM
-  unfunction _job_start _job_end _launch_job _upgrade_{brew,zinit,rust,mise,claude} _ver 2>/dev/null
+  unfunction _job_start _job_end _launch_job ${(k)functions[(I)_upgrade_*]} _ver 2>/dev/null
   rm -rf "$tmpdir"
 
   if (( has_failure )); then

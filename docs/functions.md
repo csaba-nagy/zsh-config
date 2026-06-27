@@ -124,7 +124,7 @@ upgrade --dry-run --only claude  # Preview specific tools
 - `zinit self-update && zinit update --all` (if zinit loaded)
 - **Rust**: `rustup update` + `cargo install-update -a` (if cargo-update installed)
 - **mise**: `mise upgrade` for managed runtimes (node, go, …) + global npm packages
-- **Claude**: checks npm registry for updates (if claude present)
+- **Claude**: `brew upgrade --cask claude-code@latest` (Homebrew-managed)
 
 All jobs run simultaneously with live spinner feedback. Failed job logs appear
 after all jobs complete, followed by version summary.
@@ -132,11 +132,11 @@ after all jobs complete, followed by version summary.
 **Example:**
 ```
 $ upgrade
-  ✓ [brew    ] done      12s
-  ✓ [zinit   ] done       0s
-  ✓ [rust    ] done       2s
-  ✓ [node    ] done       2s
-  ✓ [claude  ] done       1s
+  ✓ brew       done       12s
+  ✓ zinit      done        0s
+  ✓ rust       done        2s
+  ✓ mise       done        2s
+  ✓ claude     done        1s
 
 Finished in 12s
 
@@ -326,6 +326,25 @@ $ toggle_interactive off    # fast shell (~50ms), no prompt theme, no plugins
 $ toggle_interactive on     # full features
 $ toggle_interactive        # show current state
 ```
+
+---
+
+## tmux-sessionizer
+
+fzf-powered tmux session manager. Invoked via `prefix+g` inside tmux as a
+floating popup. Lists existing sessions and offers to create a new one.
+
+```
+C-a g          # open the picker inside tmux
+```
+
+**Pick an existing session** — highlights the current one, switches on Enter.
+
+**Create a new session** — select "Create new session…", type a name, press Enter.
+If you press Escape or leave the name blank, nothing happens.
+
+The script lives at `scripts/tmux-sessionizer.sh` and is called via
+`display-popup` so it never interrupts your current pane.
 
 ---
 

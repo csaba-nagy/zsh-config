@@ -72,6 +72,7 @@ A **fully-featured zsh configuration** built with:
 | **Git integration** | SSH commit signing, per-host identities, delta diffs, 80+ git aliases |
 | **macOS-tuned git** | FSEvents `fsmonitor`, fetch/index parallelism = CPU cores |
 | **Tool auto-updates** | `upgrade` updates brew, zinit, rust, mise and claude in parallel |
+| **tmux session management** | fzf session picker (`C-a g`), auto-attach wrapper, rename binding |
 | **Fuzzy finder** | fzf for file/history search, fzf-tab completion menus, forgit |
 | **Diagnostics** | `zsh-health` checks tools, PATH, and config |
 | **XDG compliant** | All config in `~/.config`, cache in `~/.cache` |
@@ -175,7 +176,7 @@ Full reference: [docs/aliases.md](docs/aliases.md), [docs/keybindings.md](docs/k
 ### Update everything
 
 ```bash
-upgrade              # brew, zinit, rust, mise (node/go), claude — in parallel
+upgrade              # brew, zinit, rust, mise (node/go), claude-code@latest — in parallel
 upgrade --dry-run    # see what would run
 upgrade --only mise  # update only mise-managed runtimes + npm globals
 ```

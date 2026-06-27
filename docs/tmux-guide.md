@@ -14,6 +14,8 @@ Prefix = `Ctrl+a` (`C-a`). All bindings require it unless noted otherwise.
 | Attach to last | `tmux attach` |
 | Attach by name | `tmux attach -t work` |
 | **Inside tmux:** pick session | `C-a S` |
+| **fzf session picker** | `C-a g` (create or switch) |
+| Rename current session | `C-a R` (prompts inline) |
 | Kill current session | `C-a X` (prompts) |
 | Detach (leave running) | `C-a d` |
 
@@ -66,6 +68,19 @@ Prefix = `Ctrl+a` (`C-a`). All bindings require it unless noted otherwise.
 
 ```
 C-a r
+```
+
+---
+
+## Shell wrapper
+
+Running `tmux` with no arguments outside of a session auto-attaches to the
+last session (or creates one if none exist). Inside a session it passes
+through unchanged — no nested sessions.
+
+```sh
+tmux          # outside: attach or new session
+tmux ls       # inside/outside: list sessions (passes through)
 ```
 
 ---
