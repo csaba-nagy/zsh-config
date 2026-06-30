@@ -95,6 +95,7 @@ If you'd rather not run the installer, here's what it does:
 git clone https://github.com/nandordudas/zsh-config ~/.config/zsh
 
 # 3. All tools (native arm64 bottles on Apple Silicon)
+# brew bundle handles taps declared in Brewfile (e.g. cormacrelf/dark-notify) automatically
 brew bundle --file=~/.config/zsh/Brewfile       # core tools
 brew bundle --file=~/.config/zsh/Brewfile.dev   # dev toolchains: mise, rustup, fastfetch
 
@@ -134,6 +135,25 @@ zsh-health
 File: `~/.config/zsh/modules/local.zsh` (gitignored — safe for secrets)
 
 ```bash
+# Machine-local zsh config (gitignored — safe for secrets and machine quirks)
+
+# Auto-attach to a tmux session when opening VS Code's integrated terminal.
+# Session name = workspace folder basename (PWD is set to workspace root by VS Code).
+# -A: attach if session exists, create new otherwise.
+# exec replaces this shell process; tmux then starts a fresh zsh inside.
+if [[ ( "$TERM_PROGRAM" == "vscode" || "$TERM_PROGRAM" == "zed" ) && -z "$TMUX" ]]; then
+  # session exists + client attached  → new independent session (avoid shared view)
+  # session exists + no client        → reattach (recover running work after VS Code closes)
+  # no session                        → create fresh
+  _session="${PWD:t}"
+  if tmux has-session -t "=${_session}" 2>/dev/null \
+     && tmux list-clients -t "=${_session}" 2>/dev/null | grep -q .; then
+    exec tmux new-session -s "${_session}-$$"
+  else
+    exec tmux new-session -A -s "${_session}"
+  fi
+fi
+
 # GitHub and BitBucket usernames (for gg/gb navigation aliases)
 export GITHUB_USER="your-github-username"
 export BITBUCKET_USER="your-bitbucket-username"

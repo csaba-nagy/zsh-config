@@ -155,3 +155,15 @@ export CODE_DIR="${CODE_DIR:-$HOME/Development/code}"
 # ~/.cargo/bin is already in PATH above, but this also sets other Cargo vars.
 # =============================================================================
 [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+
+# =============================================================================
+# TMUX THEME WATCHER
+# dark-notify fires a tmux source-file whenever macOS appearance changes.
+# Requires: brew install dark-notify
+# =============================================================================
+if (( $+commands[dark-notify] )) && (( $+commands[tmux] )); then
+  if ! pgrep -x dark-notify >/dev/null 2>&1; then
+    dark-notify -c 'tmux source-file "$HOME/.config/zsh/tmux/themes/$DARK_NOTIFY_STYLE.conf" 2>/dev/null' &>/dev/null &
+    disown
+  fi
+fi

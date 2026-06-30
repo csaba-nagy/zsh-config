@@ -21,10 +21,20 @@ else
     menu="$NEW_LABEL"
 fi
 
+# Resolve current session before fzf runs — avoids a $() subshell inside the bind string,
+# which would confuse fzf's ) delimiter scanner and silently truncate the action.
+# Use [] delimiters + `test` instead of [ ] so no ] appears inside the bracket pair.
+_current_session="$("$TMUX_BIN" display-message -p '#{session_name}' 2>/dev/null)"
+_kill_exec="execute-silent([ '{}' != \"$_current_session\" ] && [ '{}' != \"$NEW_LABEL\" ] && \"$TMUX_BIN\" kill-session -t '{}' 2>/dev/null || true)"
+_kill_reload="reload(printf '%s\n' \"$NEW_LABEL\"; \"$TMUX_BIN\" list-sessions -F '#{session_name}' 2>/dev/null | grep -vxF \"$NEW_LABEL\" || true)"
+
 choice="$(printf '%s\n' "$menu" | "$FZF_BIN" \
     --prompt='Sessions> ' \
+    --header='enter: switch  ctrl-x: kill' \
     --reverse \
-    --no-multi || true)"
+    --no-multi \
+    --bind "ctrl-x:${_kill_exec}+${_kill_reload}" \
+    || true)"
 
 [ -n "$choice" ] || exit 0
 
