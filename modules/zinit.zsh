@@ -29,7 +29,8 @@ unset _zinteractive_mode _zinteractive_mode_file
 
 # zsh-autosuggestions
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=242'
-ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=50
+ZSH_AUTOSUGGEST_USE_ASYNC=1
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 
 # zsh-you-should-use
@@ -77,8 +78,8 @@ zinit wait lucid for \
   Aloxaf/fzf-tab \
   hlissner/zsh-autopair
 
-# Group 3: Git tooling (load immediately — used frequently at prompt)
-zinit lucid for \
+# Group 3: Git tooling
+zinit wait'0' lucid for \
   wfxr/forgit
 
 # Group 4: Completions for language toolchains and Docker

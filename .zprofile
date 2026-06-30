@@ -131,15 +131,6 @@ fi
 export VISUAL="$EDITOR"
 
 # =============================================================================
-# HISTORY
-# Directory is guaranteed by the mkdir block above.
-# =============================================================================
-export HISTFILE="$XDG_DATA_HOME/zsh/history"
-export HISTSIZE=50000
-export SAVEHIST=50000
-export LESSHISTFILE="$XDG_CACHE_HOME/lesshst"
-
-# =============================================================================
 # GO
 # Go itself is per-project via mise (GOROOT handled by mise); GOPATH is
 # where `go install` puts binaries — kept stable across versions.

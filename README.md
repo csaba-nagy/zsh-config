@@ -181,6 +181,11 @@ upgrade --dry-run    # see what would run
 upgrade --only mise  # update only mise-managed runtimes + npm globals
 ```
 
+> [!NOTE]
+> `starship` and Maple Mono fonts are tracked in `Brewfile`; `fastfetch` and `claude-code@latest` in `Brewfile.dev`.
+> After a tool upgrade, eval caches (starship, zoxide, mise, fzf) regenerate automatically on the next shell
+> start via binary `-nt` check — no manual `zsh-cache-clear` needed.
+
 ### Check system health
 
 ```bash
@@ -330,6 +335,31 @@ zinit times            # per-plugin load times
 ```
 
 First start after install/update is slow (plugin downloads + cache generation) — that's normal.
+
+### Spotlight indexing dev folders (high I/O during npm install)
+
+`mdutil -i off` only works on whole volumes. To exclude `~/Development` from Spotlight:
+
+```bash
+touch ~/Development/.metadata_never_index
+```
+
+The installer does this automatically. If you moved your project root (`CODE_DIR`), add the marker there too.
+
+### Font rendering glitches (wrong weight or variant)
+
+Maple Mono is installed via brew cask (`Brewfile`). If you also have manually placed `.ttf` files in
+`~/Library/Fonts/`, macOS registers the font family twice — causing VS Code or the terminal to pick
+the wrong variant or weight.
+
+Check for and remove the manual copies (the brew cask version stays):
+
+```bash
+ls ~/Library/Fonts/MapleMono*.ttf   # list duplicates
+rm ~/Library/Fonts/MapleMono*.ttf   # remove them
+```
+
+Then restart VS Code and your terminal emulator.
 
 ### Git uses the wrong identity
 

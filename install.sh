@@ -273,7 +273,9 @@ info "Linked alacritty config"
 
 # 6. Project root for gg/gb aliases and freespace
 mkdir -p "$HOME/Development/code"
+touch "$HOME/Development/.metadata_never_index"
 info "Project root: ~/Development/code (override CODE_DIR in modules/local.zsh)"
+info "Spotlight indexing disabled for ~/Development (.metadata_never_index)"
 
 # 7. Git identity + SSH signing (optional)
 if [[ -n "$GIT_NAME" && -n "$GIT_EMAIL" ]]; then
