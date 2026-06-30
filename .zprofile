@@ -157,13 +157,20 @@ export CODE_DIR="${CODE_DIR:-$HOME/Development/code}"
 [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
 
 # =============================================================================
-# TMUX THEME WATCHER
-# dark-notify fires a tmux source-file whenever macOS appearance changes.
-# Requires: brew install dark-notify
+# THEME WATCHER  (tmux + alacritty)
+# dark-notify fires scripts/theme-switch.sh on macOS appearance change.
+# Requires: brew install cormacrelf/dark-notify/dark-notify
 # =============================================================================
-if (( $+commands[dark-notify] )) && (( $+commands[tmux] )); then
+if (( $+commands[dark-notify] )); then
+  # Write the correct theme file for the current appearance at login
+  _style="$(defaults read -g AppleInterfaceStyle 2>/dev/null | tr '[:upper:]' '[:lower:]')"
+  cp "$ZDOTDIR/alacritty/themes/${_style:-light}.toml" \
+     "$HOME/.config/alacritty/theme.toml" 2>/dev/null
+  unset _style
+
+  # Start watcher once per login session
   if ! pgrep -x dark-notify >/dev/null 2>&1; then
-    dark-notify -c 'tmux source-file "$HOME/.config/zsh/tmux/themes/$DARK_NOTIFY_STYLE.conf" 2>/dev/null' &>/dev/null &
+    dark-notify -c '"$HOME/.config/zsh/scripts/theme-switch.sh"' &>/dev/null &
     disown
   fi
 fi

@@ -23,7 +23,7 @@ That's it. The installer:
 
 - Installs **Homebrew** if missing (`/opt/homebrew` on Apple Silicon — all bottles native arm64)
 - Installs every tool the config uses via **`brew bundle`** — the package list is declared in [`Brewfile`](Brewfile) (core) and [`Brewfile.dev`](Brewfile.dev) (dev toolchains: mise, rustup, fastfetch)
-- Writes `~/.zshenv`, creates `modules/local.zsh`, links the tmux config
+- Writes `~/.zshenv`, creates `modules/local.zsh`, links the tmux config, creates the Alacritty local wrapper
 - Is **idempotent** — safe to re-run anytime; existing files are backed up, never silently overwritten
 
 ### Installer options
@@ -73,6 +73,7 @@ A **fully-featured zsh configuration** built with:
 | **macOS-tuned git** | FSEvents `fsmonitor`, fetch/index parallelism = CPU cores |
 | **Tool auto-updates** | `upgrade` updates brew, zinit, rust, mise and claude in parallel |
 | **tmux session management** | fzf session picker (`C-a g`), auto-attach wrapper, rename binding |
+| **Automatic dark/light themes** | tmux + Alacritty switch instantly when macOS appearance changes (Catppuccin Mocha ↔ Latte) |
 | **Fuzzy finder** | fzf for file/history search, fzf-tab completion menus, forgit |
 | **Diagnostics** | `zsh-health` checks tools, PATH, and config |
 | **XDG compliant** | All config in `~/.config`, cache in `~/.cache` |
@@ -120,7 +121,17 @@ touch ~/.config/zsh/modules/local.zsh
 mkdir -p ~/.config/tmux
 ln -sf ~/.config/zsh/tmux/tmux.conf ~/.config/tmux/tmux.conf
 
-# 8. Open a new terminal — Zinit installs plugins on first start (~1-2 min)
+# 8. Alacritty local wrapper (real file, not a symlink — lets you add local overrides after the import)
+mkdir -p ~/.config/alacritty
+cat > ~/.config/alacritty/alacritty.toml << 'EOF'
+[general]
+import = [
+  "~/.config/zsh/alacritty/alacritty.toml",
+  "~/.config/alacritty/theme.toml",
+]
+EOF
+
+# 9. Open a new terminal — Zinit installs plugins on first start (~1-2 min)
 zsh-health
 ```
 
@@ -176,6 +187,46 @@ export BITBUCKET_USER="your-bitbucket-username"
 
 # Custom aliases / functions / overrides
 alias myproject="cd ~/projects/myproject"
+```
+
+### Dark/light theme switching
+
+tmux and Alacritty follow the macOS system appearance automatically using [dark-notify](https://github.com/cormacrelf/dark-notify) (installed via `Brewfile`). Both switch to **Catppuccin Mocha** in dark mode and **Catppuccin Latte** in light mode with no manual action needed.
+
+**How it works:**
+
+- `.zprofile` starts `dark-notify` once at login as a background process
+- On every macOS appearance change, `dark-notify` calls `scripts/theme-switch.sh`
+- The script applies the right theme to tmux (`tmux source-file`) and writes `~/.config/alacritty/theme.toml`, which Alacritty reloads live via `live_config_reload = true`
+- The correct theme is also written at login so the first shell matches the current appearance
+
+**Theme files:**
+
+| App | Dark | Light |
+|-----|------|-------|
+| tmux | `tmux/themes/dark.conf` | `tmux/themes/light.conf` |
+| Alacritty | `alacritty/themes/dark.toml` | `alacritty/themes/light.toml` |
+
+**Alacritty local wrapper** (`~/.config/alacritty/alacritty.toml`, not committed):
+
+```toml
+[general]
+import = [
+  "~/.config/zsh/alacritty/alacritty.toml",  # shared base
+  "~/.config/alacritty/theme.toml",           # current theme (written by theme-switch.sh)
+]
+
+# Add machine-local overrides below (font size, opacity, etc.)
+```
+
+The installer creates this wrapper automatically. To add per-machine Alacritty overrides, append settings after the `import` block — they take precedence over everything imported.
+
+**tmux local overrides** (`tmux/local.conf`, gitignored):
+
+Sourced last by `tmux.conf`, so anything here wins. Created empty by the installer:
+
+```bash
+# set -g status-interval 10   # slower refresh on slow machines
 ```
 
 ### Customize plugins
@@ -451,9 +502,22 @@ To disable plugins temporarily without uninstalling: `toggle_interactive off`.
 │   ├── functions.zsh         # upgrade, zsh-health, freespace, …
 │   ├── tools.zsh             # cached tool init (starship, zoxide, mise, …)
 │   └── local.zsh             # machine-local overrides (gitignored)
-├── tmux/tmux.conf            # tmux config (linked to ~/.config/tmux/)
+├── tmux/
+│   ├── tmux.conf             # tmux config (linked to ~/.config/tmux/)
+│   ├── local.conf            # machine-local tmux overrides (gitignored)
+│   └── themes/
+│       ├── dark.conf         # Catppuccin Mocha
+│       └── light.conf        # Catppuccin Latte
+├── alacritty/
+│   ├── alacritty.toml        # shared base config
+│   └── themes/
+│       ├── dark.toml         # Catppuccin Mocha
+│       └── light.toml        # Catppuccin Latte
 ├── scripts/
 │   ├── git-setup.sh          # git identity + SSH signing factory
+│   ├── theme-switch.sh       # called by dark-notify — applies tmux + Alacritty theme
+│   ├── tmux-sessionizer.sh   # fzf session picker (C-a g)
+│   ├── tmux-sys-info.sh      # status bar: CPU / MEM / GPU
 │   └── test.sh               # test suite
 └── docs/                     # aliases, functions, keybindings, plugins
 ```

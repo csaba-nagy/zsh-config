@@ -261,15 +261,35 @@ fi
 ln -sf "$ZSH_DIR/tmux/tmux.conf" "$TMUX_CONF"
 info "Linked tmux config"
 
-# 5b. alacritty config symlink (back up an existing real file first)
+# 5b. alacritty config — create a local wrapper that imports the versioned base.
+#     A real file (not a symlink) so local overrides placed after the import win.
 mkdir -p "$XDG_CONFIG_HOME/alacritty"
 ALACRITTY_CONF="$XDG_CONFIG_HOME/alacritty/alacritty.toml"
-if [[ -f "$ALACRITTY_CONF" && ! -L "$ALACRITTY_CONF" ]]; then
+ALACRITTY_BASE="$ZSH_DIR/alacritty/alacritty.toml"
+if [[ -L "$ALACRITTY_CONF" ]]; then
+  rm "$ALACRITTY_CONF"    # remove old symlink; replace with real local wrapper
+elif [[ -f "$ALACRITTY_CONF" ]] && ! grep -q "zsh/alacritty/alacritty.toml" "$ALACRITTY_CONF"; then
   warn "Existing alacritty.toml backed up to alacritty.toml.bak"
   mv "$ALACRITTY_CONF" "$ALACRITTY_CONF.bak"
 fi
-ln -sf "$ZSH_DIR/alacritty/alacritty.toml" "$ALACRITTY_CONF"
-info "Linked alacritty config"
+if [[ ! -f "$ALACRITTY_CONF" ]]; then
+  cat > "$ALACRITTY_CONF" << EOF
+# ~/.config/alacritty/alacritty.toml — local, not committed to the repo
+# Imports the shared base config; settings added below override the base.
+
+import = ["$ALACRITTY_BASE"]
+
+# Example machine-local overrides:
+# [font]
+# size = 14.0
+#
+# [window]
+# opacity = 1.0
+EOF
+  info "Created alacritty local wrapper (imports base config)"
+else
+  info "alacritty local wrapper already exists — kept"
+fi
 
 # 6. Project root for gg/gb aliases and freespace
 mkdir -p "$HOME/Development/code"
