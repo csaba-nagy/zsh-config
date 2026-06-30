@@ -123,11 +123,11 @@ ln -sf ~/.config/zsh/tmux/tmux.conf ~/.config/tmux/tmux.conf
 
 # 8. Alacritty local wrapper (real file, not a symlink — lets you add local overrides after the import)
 mkdir -p ~/.config/alacritty
-cat > ~/.config/alacritty/alacritty.toml << 'EOF'
+cat > ~/.config/alacritty/alacritty.toml << EOF
 [general]
 import = [
-  "~/.config/zsh/alacritty/alacritty.toml",
-  "~/.config/alacritty/theme.toml",
+  "$HOME/.config/zsh/alacritty/alacritty.toml",
+  "$HOME/.config/alacritty/theme.toml",
 ]
 EOF
 
@@ -416,21 +416,6 @@ touch ~/Development/.metadata_never_index
 ```
 
 The installer does this automatically. If you moved your project root (`CODE_DIR`), add the marker there too.
-
-### Font rendering glitches (wrong weight or variant)
-
-Maple Mono is installed via brew cask (`Brewfile`). If you also have manually placed `.ttf` files in
-`~/Library/Fonts/`, macOS registers the font family twice — causing VS Code or the terminal to pick
-the wrong variant or weight.
-
-Check for and remove the manual copies (the brew cask version stays):
-
-```bash
-ls ~/Library/Fonts/MapleMono*.ttf   # list duplicates
-rm ~/Library/Fonts/MapleMono*.ttf   # remove them
-```
-
-Then restart VS Code and your terminal emulator.
 
 ### Git uses the wrong identity
 

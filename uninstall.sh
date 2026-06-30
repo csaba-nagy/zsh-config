@@ -2,10 +2,12 @@
 # uninstall.sh — undo what install.sh did, restoring backed-up originals.
 #
 # One confirmation, then:
-#   - ~/.zshenv          → restored from ~/.zshenv.bak if present, else removed
-#   - tmux.conf symlink  → removed; tmux.conf.bak restored if present
-#   - ~/.config/zsh      → moved to ~/.config/zsh.uninstalled (kept, not deleted)
-#   - zsh caches/state   → removed (~/.cache/zsh, zinit plugins)
+#   - dark-notify process → stopped
+#   - ~/.zshenv           → restored from ~/.zshenv.bak if present, else removed
+#   - tmux.conf symlink   → removed; tmux.conf.bak restored if present
+#   - alacritty wrapper   → removed (or restored from .bak); theme.toml removed
+#   - ~/.config/zsh       → moved to ~/.config/zsh.uninstalled (kept, not deleted)
+#   - zsh caches/state    → removed (~/.cache/zsh, zinit plugins)
 #
 # NOT touched: Homebrew packages, mise runtimes, npm globals
 # (~/.default-npm-packages), git config, SSH keys, history.
@@ -33,8 +35,10 @@ TMUX_CONF="$XDG_CONFIG_HOME/tmux/tmux.conf"
 
 printf "%s━━ zsh-config uninstaller ━━%s\n\n" "$BOLD" "$RESET"
 printf "This will:\n"
+printf "  • stop the dark-notify theme watcher\n"
 printf "  • restore ~/.zshenv from backup (or remove it)\n"
 printf "  • remove the tmux config symlink (restore backup if present)\n"
+printf "  • remove the alacritty local wrapper (restore backup if present)\n"
 printf "  • move %s to %s.uninstalled (kept as backup)\n" "$ZSH_DIR" "$ZSH_DIR"
 printf "  • clear zsh caches and zinit plugins\n"
 printf "\nKept untouched: brew packages, mise runtimes, npm globals, git config, SSH keys, shell history.\n\n"
@@ -54,7 +58,10 @@ elif [[ -f "$HOME/.zshenv" ]]; then
   info "Removed ~/.zshenv"
 fi
 
-# 2. tmux config — only remove the symlink if it points into this repo
+# 2. dark-notify — stop the watcher so it doesn't reference a removed config
+pkill -x dark-notify 2>/dev/null && info "Stopped dark-notify watcher" || true
+
+# 3. tmux config — only remove the symlink if it points into this repo
 if [[ -L "$TMUX_CONF" && "$(readlink "$TMUX_CONF")" == "$ZSH_DIR"* ]]; then
   rm "$TMUX_CONF"
   info "Removed tmux config symlink"
@@ -66,14 +73,27 @@ elif [[ -e "$TMUX_CONF" ]]; then
   warn "$TMUX_CONF is not this repo's symlink — left untouched"
 fi
 
-# 3. Config repo — keep as a backup instead of deleting (local.zsh may hold secrets)
+# 4. alacritty wrapper — remove if install.sh created it (imports this repo's base)
+ALACRITTY_CONF="$XDG_CONFIG_HOME/alacritty/alacritty.toml"
+if [[ -f "$ALACRITTY_CONF" ]] && grep -q "zsh/alacritty/alacritty.toml" "$ALACRITTY_CONF"; then
+  if [[ -f "$ALACRITTY_CONF.bak" ]]; then
+    mv "$ALACRITTY_CONF.bak" "$ALACRITTY_CONF"
+    info "Restored original alacritty.toml from backup"
+  else
+    rm "$ALACRITTY_CONF"
+    info "Removed alacritty local wrapper"
+  fi
+  rm -f "$XDG_CONFIG_HOME/alacritty/theme.toml"
+fi
+
+# 5. Config repo — keep as a backup instead of deleting (local.zsh may hold secrets)
 if [[ -d "$ZSH_DIR" ]]; then
   rm -rf "$ZSH_DIR.uninstalled"
   mv "$ZSH_DIR" "$ZSH_DIR.uninstalled"
   info "Moved $ZSH_DIR → $ZSH_DIR.uninstalled (delete it when you're sure)"
 fi
 
-# 4. Caches and plugin state (regenerable, safe to delete)
+# 6. Caches and plugin state (regenerable, safe to delete)
 rm -rf "$XDG_CACHE_HOME/zsh" "$XDG_DATA_HOME/zinit" "$XDG_STATE_HOME/zsh"
 info "Cleared zsh caches and zinit plugins"
 

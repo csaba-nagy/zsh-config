@@ -170,7 +170,7 @@ if (( $+commands[dark-notify] )); then
 
   # Start watcher once per login session
   if ! pgrep -x dark-notify >/dev/null 2>&1; then
-    dark-notify -c '"$HOME/.config/zsh/scripts/theme-switch.sh"' &>/dev/null &
+    dark-notify -c "$ZDOTDIR/scripts/theme-switch.sh" &>/dev/null &
     disown
   fi
 fi

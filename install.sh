@@ -277,7 +277,11 @@ if [[ ! -f "$ALACRITTY_CONF" ]]; then
 # ~/.config/alacritty/alacritty.toml — local, not committed to the repo
 # Imports the shared base config; settings added below override the base.
 
-import = ["$ALACRITTY_BASE"]
+[general]
+import = [
+  "$ALACRITTY_BASE",
+  "${XDG_CONFIG_HOME}/alacritty/theme.toml",
+]
 
 # Example machine-local overrides:
 # [font]
@@ -286,7 +290,7 @@ import = ["$ALACRITTY_BASE"]
 # [window]
 # opacity = 1.0
 EOF
-  info "Created alacritty local wrapper (imports base config)"
+  info "Created alacritty local wrapper (imports base config + theme)"
 else
   info "alacritty local wrapper already exists — kept"
 fi
