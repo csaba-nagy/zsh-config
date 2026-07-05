@@ -152,11 +152,33 @@ File: `~/.config/zsh/modules/local.zsh` (gitignored — safe for secrets)
 # Session name = workspace folder basename (PWD is set to workspace root by VS Code).
 # -A: attach if session exists, create new otherwise.
 # exec replaces this shell process; tmux then starts a fresh zsh inside.
-if [[ ( "$TERM_PROGRAM" == "vscode" || "$TERM_PROGRAM" == "zed" ) && -z "$TMUX" ]]; then
+# TERM_PROGRAM would be "tmux" if this shell were really inside tmux, so a set
+# $TMUX here is always stale (inherited from launching `code` inside tmux).
+if [[ "$TERM_PROGRAM" == "vscode" || "$TERM_PROGRAM" == "zed" ]]; then
+  unset TMUX TMUX_PANE
+
   # session exists + client attached  → new independent session (avoid shared view)
   # session exists + no client        → reattach (recover running work after VS Code closes)
   # no session                        → create fresh
   _session="${PWD:t}"
+
+  if tmux has-session -t "=${_session}" 2>/dev/null \
+     && tmux list-clients -t "=${_session}" 2>/dev/null | grep -q .; then
+    exec tmux new-session -s "${_session}-$$"
+  else
+    exec tmux new-session -A -s "${_session}"
+  fi
+fi
+
+# Auto-attach to a tmux session when opening Alacritty.
+# Uses a fixed "main" session (no workspace context like VS Code).
+# Detected via $TERM=alacritty set in alacritty.toml [env].
+# $TERM would be tmux-256color inside tmux, so a set $TMUX here is stale too.
+if [[ "$TERM" == "alacritty" ]]; then
+  unset TMUX TMUX_PANE
+
+  _session="main"
+
   if tmux has-session -t "=${_session}" 2>/dev/null \
      && tmux list-clients -t "=${_session}" 2>/dev/null | grep -q .; then
     exec tmux new-session -s "${_session}-$$"
@@ -213,7 +235,7 @@ tmux and Alacritty follow the macOS system appearance automatically using [dark-
 [general]
 import = [
   "~/.config/zsh/alacritty/alacritty.toml",  # shared base
-  "~/.config/alacritty/theme.toml",           # current theme (written by theme-switch.sh)
+  "~/.config/alacritty/theme.toml",          # current theme (written by theme-switch.sh)
 ]
 
 # Add machine-local overrides below (font size, opacity, etc.)
@@ -506,6 +528,12 @@ To disable plugins temporarily without uninstalling: `toggle_interactive off`.
 │   └── test.sh               # test suite
 └── docs/                     # aliases, functions, keybindings, plugins
 ```
+
+## VS Code settings
+
+<details>
+<summary></summary>
+</details>
 
 ---
 
