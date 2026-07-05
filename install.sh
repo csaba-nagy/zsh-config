@@ -280,7 +280,6 @@ if [[ ! -f "$ALACRITTY_CONF" ]]; then
 [general]
 import = [
   "$ALACRITTY_BASE",
-  "${XDG_CONFIG_HOME}/alacritty/theme.toml",
 ]
 
 # Example machine-local overrides:
@@ -290,7 +289,7 @@ import = [
 # [window]
 # opacity = 1.0
 EOF
-  info "Created alacritty local wrapper (imports base config + theme)"
+  info "Created alacritty local wrapper (imports base config)"
 else
   info "alacritty local wrapper already exists — kept"
 fi

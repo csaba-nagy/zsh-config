@@ -10,7 +10,7 @@ TERM = "alacritty"
 
 [window]
 # Window opacity (0.0 - 1.0)
-opacity = 0.95
+opacity = 1.0
 # Window padding
 padding = { x = 10, y = 10 }
 # macOS Option key (⌥) sends Esc prefix — required for fzf's Option+C and other Alt bindings
@@ -30,3 +30,66 @@ thickness = 0.15
 bindings = [
   { mouse = "Right", action = "Paste" }
 ]
+
+# =============================================================================
+# MAPLE THEME — Dark (default) & Light
+# Switch by commenting/uncommenting the sections below
+# =============================================================================
+
+# Maple Dark
+[colors.primary]
+background = "#1e1e1f"
+foreground = "#cbd5e1"
+
+[colors.cursor]
+cursor = "#8d9db4"
+text = "#1e1e1f"
+
+[colors.normal]
+black   = "#44444b"
+red     = "#edabab"
+green   = "#a4dfae"
+yellow  = "#eecfa0"
+blue    = "#8fc7ff"
+magenta = "#c6b9ca"
+cyan    = "#89cdca"
+white   = "#cbd5e1"
+
+[colors.bright]
+black   = "#5f5f68"
+red     = "#f5b8b8"
+green   = "#b3f5cf"
+yellow  = "#f9deb4"
+blue    = "#a4d8ff"
+magenta = "#d5c9d8"
+cyan    = "#9dd9d7"
+white   = "#fafafa"
+
+# Maple Light (comment out the Dark section above and uncomment this to switch)
+# [colors.primary]
+# background = "#fffffe"
+# foreground = "#475569"
+#
+# [colors.cursor]
+# cursor = "#64748b"
+# text = "#fffffe"
+#
+# [colors.normal]
+# black   = "#cbd5e1"
+# red     = "#b85c75"
+# green   = "#4a8c3a"
+# yellow  = "#a58e3a"
+# blue    = "#0969da"
+# magenta = "#7e3e8c"
+# cyan    = "#2a7f7e"
+# white   = "#475569"
+#
+# [colors.bright]
+# black   = "#64748b"
+# red     = "#d084a0"
+# green   = "#5fa84a"
+# yellow  = "#bfa34a"
+# blue    = "#3b82f6"
+# magenta = "#a853ba"
+# cyan    = "#3aa9a8"
+# white   = "#64748b"

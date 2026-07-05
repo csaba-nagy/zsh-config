@@ -24,7 +24,7 @@ The test suite covers: bash/zsh syntax, required file presence, no personal data
 ~/.zshenv          (not in repo — written by install.sh)
   → sets ZDOTDIR=$XDG_CONFIG_HOME/zsh and XDG_* vars
 .zprofile          (login shells only)
-  → Homebrew, PATH, persistent env vars, dark-notify watcher
+  → Homebrew, PATH, persistent env vars
 .zshrc             (interactive shells)
   → sources modules in strict order: options → zinit → completions →
     keybindings → aliases → functions → tools → local (gitignored)
@@ -32,13 +32,6 @@ The test suite covers: bash/zsh syntax, required file presence, no personal data
 
 `~/.config/alacritty/alacritty.toml` and `~/.config/tmux/tmux.conf` are **not** in this repo — they are created/linked by `install.sh`. The alacritty one is a real file (not a symlink) that imports `alacritty/alacritty.toml` from this repo plus `~/.config/alacritty/theme.toml` (the live theme file). The tmux one is a symlink to `tmux/tmux.conf`.
 
-### Theme switching
-
-`dark-notify` (started in `.zprofile`) calls `scripts/theme-switch.sh` on macOS appearance changes. The script:
-1. Runs `tmux source-file tmux/themes/{dark,light}.conf` — updates all running sessions
-2. Copies `alacritty/themes/{dark,light}.toml` → `~/.config/alacritty/theme.toml` — Alacritty picks it up via `live_config_reload`
-
-`.zprofile` also performs the initial sync at login (copies the right theme file once, before dark-notify starts watching). The `pgrep -x dark-notify` guard prevents duplicate watchers across multiple login shells.
 
 ### Performance pattern (tools.zsh)
 
@@ -75,5 +68,4 @@ Plugin config vars (`ZSH_AUTOSUGGEST_*`, `ZSH_HIGHLIGHT_*`, etc.) must be set **
 | `modules/local.zsh` | Per-machine zsh overrides, secrets, `ZSH_CONFIG_AUTO_UPDATE=1` opt-in |
 | `tmux/local.conf` | Per-machine tmux overrides, sourced last by `tmux.conf` |
 | `~/.config/alacritty/alacritty.toml` | Local Alacritty wrapper with imports + per-machine overrides |
-| `~/.config/alacritty/theme.toml` | Current theme file, written by `theme-switch.sh` |
 

@@ -35,7 +35,6 @@ TMUX_CONF="$XDG_CONFIG_HOME/tmux/tmux.conf"
 
 printf "%s━━ zsh-config uninstaller ━━%s\n\n" "$BOLD" "$RESET"
 printf "This will:\n"
-printf "  • stop the dark-notify theme watcher\n"
 printf "  • restore ~/.zshenv from backup (or remove it)\n"
 printf "  • remove the tmux config symlink (restore backup if present)\n"
 printf "  • remove the alacritty local wrapper (restore backup if present)\n"
@@ -58,10 +57,7 @@ elif [[ -f "$HOME/.zshenv" ]]; then
   info "Removed ~/.zshenv"
 fi
 
-# 2. dark-notify — stop the watcher so it doesn't reference a removed config
-pkill -x dark-notify 2>/dev/null && info "Stopped dark-notify watcher" || true
-
-# 3. tmux config — only remove the symlink if it points into this repo
+# 2. tmux config — only remove the symlink if it points into this repo
 if [[ -L "$TMUX_CONF" && "$(readlink "$TMUX_CONF")" == "$ZSH_DIR"* ]]; then
   rm "$TMUX_CONF"
   info "Removed tmux config symlink"
@@ -73,7 +69,7 @@ elif [[ -e "$TMUX_CONF" ]]; then
   warn "$TMUX_CONF is not this repo's symlink — left untouched"
 fi
 
-# 4. alacritty wrapper — remove if install.sh created it (imports this repo's base)
+# 3. alacritty wrapper — remove if install.sh created it (imports this repo's base)
 ALACRITTY_CONF="$XDG_CONFIG_HOME/alacritty/alacritty.toml"
 if [[ -f "$ALACRITTY_CONF" ]] && grep -q "zsh/alacritty/alacritty.toml" "$ALACRITTY_CONF"; then
   if [[ -f "$ALACRITTY_CONF.bak" ]]; then
@@ -83,7 +79,6 @@ if [[ -f "$ALACRITTY_CONF" ]] && grep -q "zsh/alacritty/alacritty.toml" "$ALACRI
     rm "$ALACRITTY_CONF"
     info "Removed alacritty local wrapper"
   fi
-  rm -f "$XDG_CONFIG_HOME/alacritty/theme.toml"
 fi
 
 # 5. Config repo — keep as a backup instead of deleting (local.zsh may hold secrets)

@@ -73,7 +73,6 @@ A **fully-featured zsh configuration** built with:
 | **macOS-tuned git** | FSEvents `fsmonitor`, fetch/index parallelism = CPU cores |
 | **Tool auto-updates** | `upgrade` updates brew, zinit, rust, mise and claude in parallel |
 | **tmux session management** | fzf session picker (`C-a g`), auto-attach wrapper, rename binding |
-| **Automatic dark/light themes** | tmux + Alacritty switch instantly when macOS appearance changes (Catppuccin Mocha ↔ Latte) |
 | **Fuzzy finder** | fzf for file/history search, fzf-tab completion menus, forgit |
 | **Diagnostics** | `zsh-health` checks tools, PATH, and config |
 | **XDG compliant** | All config in `~/.config`, cache in `~/.cache` |
@@ -96,7 +95,6 @@ If you'd rather not run the installer, here's what it does:
 git clone https://github.com/nandordudas/zsh-config ~/.config/zsh
 
 # 3. All tools (native arm64 bottles on Apple Silicon)
-# brew bundle handles taps declared in Brewfile (e.g. cormacrelf/dark-notify) automatically
 brew bundle --file=~/.config/zsh/Brewfile       # core tools
 brew bundle --file=~/.config/zsh/Brewfile.dev   # dev toolchains: mise, rustup, fastfetch
 
@@ -211,35 +209,6 @@ export BITBUCKET_USER="your-bitbucket-username"
 alias myproject="cd ~/projects/myproject"
 ```
 
-### Dark/light theme switching
-
-tmux and Alacritty follow the macOS system appearance automatically using [dark-notify](https://github.com/cormacrelf/dark-notify) (installed via `Brewfile`). Both switch to **Catppuccin Mocha** in dark mode and **Catppuccin Latte** in light mode with no manual action needed.
-
-**How it works:**
-
-- `.zprofile` starts `dark-notify` once at login as a background process
-- On every macOS appearance change, `dark-notify` calls `scripts/theme-switch.sh`
-- The script applies the right theme to tmux (`tmux source-file`) and writes `~/.config/alacritty/theme.toml`, which Alacritty reloads live via `live_config_reload = true`
-- The correct theme is also written at login so the first shell matches the current appearance
-
-**Theme files:**
-
-| App | Dark | Light |
-|-----|------|-------|
-| tmux | `tmux/themes/dark.conf` | `tmux/themes/light.conf` |
-| Alacritty | `alacritty/themes/dark.toml` | `alacritty/themes/light.toml` |
-
-**Alacritty local wrapper** (`~/.config/alacritty/alacritty.toml`, not committed):
-
-```toml
-[general]
-import = [
-  "~/.config/zsh/alacritty/alacritty.toml",  # shared base
-  "~/.config/alacritty/theme.toml",          # current theme (written by theme-switch.sh)
-]
-
-# Add machine-local overrides below (font size, opacity, etc.)
-```
 
 The installer creates this wrapper automatically. To add per-machine Alacritty overrides, append settings after the `import` block — they take precedence over everything imported.
 
@@ -522,7 +491,6 @@ To disable plugins temporarily without uninstalling: `toggle_interactive off`.
 │       └── light.toml        # Catppuccin Latte
 ├── scripts/
 │   ├── git-setup.sh          # git identity + SSH signing factory
-│   ├── theme-switch.sh       # called by dark-notify — applies tmux + Alacritty theme
 │   ├── tmux-sessionizer.sh   # fzf session picker (C-a g)
 │   ├── tmux-sys-info.sh      # status bar: CPU / MEM / GPU
 │   └── test.sh               # test suite

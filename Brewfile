@@ -5,8 +5,6 @@
 # Shell essentials
 brew "git"
 brew "tmux"
-tap "cormacrelf/dark-notify"
-brew "cormacrelf/dark-notify/dark-notify" # macOS dark/light mode watcher (tmux theme switching)
 brew "fzf"        # fuzzy finder (Ctrl+R / Ctrl+T / Option+C)
 brew "zoxide"     # smart cd (z)
 brew "starship"   # prompt
