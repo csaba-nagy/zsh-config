@@ -480,15 +480,9 @@ To disable plugins temporarily without uninstalling: `toggle_interactive off`.
 │   └── local.zsh             # machine-local overrides (gitignored)
 ├── tmux/
 │   ├── tmux.conf             # tmux config (linked to ~/.config/tmux/)
-│   ├── local.conf            # machine-local tmux overrides (gitignored)
-│   └── themes/
-│       ├── dark.conf         # Catppuccin Mocha
-│       └── light.conf        # Catppuccin Latte
+│   └── local.conf            # machine-local tmux overrides (gitignored)
 ├── alacritty/
-│   ├── alacritty.toml        # shared base config
-│   └── themes/
-│       ├── dark.toml         # Catppuccin Mocha
-│       └── light.toml        # Catppuccin Latte
+│   └── alacritty.toml        # shared base config
 ├── scripts/
 │   ├── git-setup.sh          # git identity + SSH signing factory
 │   ├── tmux-sessionizer.sh   # fzf session picker (C-a g)
