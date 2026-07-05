@@ -13,6 +13,8 @@ TERM = "alacritty"
 opacity = 0.95
 # Window padding
 padding = { x = 10, y = 10 }
+# macOS Option key (⌥) sends Esc prefix — required for fzf's Option+C and other Alt bindings
+option_as_alt = "Both"
 
 [font]
 # brew install --cask font-maple-mono font-maple-mono-nf
@@ -28,8 +30,3 @@ thickness = 0.15
 bindings = [
   { mouse = "Right", action = "Paste" }
 ]
-
-[keyboard]
-# macOS Option key (⌥) handling: send Esc prefix (e.g., Option+C → Esc+C)
-# Required for fzf shortcuts (Ctrl+T, Option+C, Ctrl+R) and other Option key bindings
-bindings = []

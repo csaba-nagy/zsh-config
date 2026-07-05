@@ -178,7 +178,7 @@ EOF
     if mise use --global node@lts; then
       # Ensure globals exist even when node was already installed before
       # the default-packages file was created (re-runs, upgrades)
-      mise exec -- npm install --global $(xargs < "$HOME/.default-npm-packages") \
+      mise exec -- npm install --global "$(xargs < "$HOME/.default-npm-packages")" \
         || warn "npm globals failed — run: npm i -g \$(xargs < ~/.default-npm-packages)"
     else
       warn "mise install failed — run 'mise use -g node@lts' later"

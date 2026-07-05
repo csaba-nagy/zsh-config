@@ -155,12 +155,12 @@ fi
 
 GIT_DIR="$TMP_HOME/.config/git"
 
-check "~/.config/git/config created"                test -f "$GIT_DIR/config"
-check "~/.config/git/ignore created"                test -f "$GIT_DIR/ignore"
-check "~/.config/git/allowed_signers created"       test -f "$GIT_DIR/allowed_signers"
-check "~/.config/git/github/.gitconfig created"     test -f "$GIT_DIR/github/.gitconfig"
-check "~/.config/git/bitbucket/.gitconfig created"  test -f "$GIT_DIR/bitbucket/.gitconfig"
-check "~/.ssh directory created"                    test -d "$TMP_HOME/.ssh"
+check "$HOME/.config/git/config created"                test -f "$GIT_DIR/config"
+check "$HOME/.config/git/ignore created"                test -f "$GIT_DIR/ignore"
+check "$HOME/.config/git/allowed_signers created"       test -f "$GIT_DIR/allowed_signers"
+check "$HOME/.config/git/github/.gitconfig created"     test -f "$GIT_DIR/github/.gitconfig"
+check "$HOME/.config/git/bitbucket/.gitconfig created"  test -f "$GIT_DIR/bitbucket/.gitconfig"
+check "$HOME/.ssh directory created"                    test -d "$TMP_HOME/.ssh"
 
 # Verify name/email injected correctly
 if [[ -f "$GIT_DIR/config" ]]; then
@@ -247,7 +247,7 @@ else
   fail "install.sh --config-only exited non-zero"
 fi
 
-check "~/.zshenv written"                grep -q ZDOTDIR "$RT_HOME/.zshenv"
+check "$HOME/.zshenv written"                grep -q ZDOTDIR "$RT_HOME/.zshenv"
 check "original ~/.zshenv backed up"     grep -q "my original zshenv" "$RT_HOME/.zshenv.bak"
 check "original tmux.conf backed up"     grep -q "my original tmux.conf" "$RT_HOME/.config/tmux/tmux.conf.bak"
 check "tmux.conf is now a symlink"       test -L "$RT_HOME/.config/tmux/tmux.conf"
@@ -265,9 +265,9 @@ check "original ~/.zshenv restored"      grep -q "my original zshenv" "$RT_HOME/
 check "original tmux.conf restored"      grep -q "my original tmux.conf" "$RT_HOME/.config/tmux/tmux.conf"
 check "config moved to .uninstalled"     test -d "$RT_HOME/.config/zsh.uninstalled"
 if [[ -d "$RT_HOME/.config/zsh" ]]; then
-  fail "~/.config/zsh still present after uninstall"
+  fail "$HOME/.config/zsh still present after uninstall"
 else
-  ok "~/.config/zsh removed"
+  ok "$HOME/.config/zsh removed"
 fi
 
 # -----------------------------------------------------------------------------

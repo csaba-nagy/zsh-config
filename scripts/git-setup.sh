@@ -36,7 +36,7 @@ prompt() {
   local var="$1" label="$2" default="$3"
   if [[ -z "${!var}" ]]; then
     printf "%s [%s]: " "$label" "$default"
-    read -r "$var"
+    read -r "${var?}"
     [[ -z "${!var}" ]] && printf -v "$var" '%s' "$default"
   fi
 }

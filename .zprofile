@@ -88,6 +88,7 @@ _check_zsh_config_updates() {
 }
 
 _check_zsh_config_updates
+unfunction _check_zsh_config_updates
 
 # =============================================================================
 # PATH (deduplicated via typeset -U)
